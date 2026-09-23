@@ -1,0 +1,4 @@
+﻿observationId,observedOrder,method,endpoint,employeeId,httpStatus,apiStatus,retryAfterBody,retryAfterHeader,createdAt,completedAt,processingMs,observedExtraFields,notObservedFields,note
+M-1,1,POST,/background-checks,EMP-001,201,pending,,,2026-09-22T04:46:16.792Z,,,,estimatedCompletionSeconds,checkId 발급 확인(값은 기록하지 않음). estimatedCompletionSeconds 는 관찰되지 않음. 그 밖의 필드 구성은 기록하지 않음
+M-2,2,GET,/background-checks/{checkId},EMP-001,503,,30,,,,,,,위 checkId GET 조회 중 503. 응답 body 에서 retryAfter=30 확인. Retry-After 헤더 확인 여부는 기록하지 않음. M-1 과 M-2 사이 요청 횟수는 기록하지 않음
+M-3,3,GET,/background-checks/{checkId},EMP-001,200,clear,,,2026-09-22T04:46:16.792Z,2026-09-22T04:46:54.720Z,37928,processingMs;tenant;tenantEmployee,,"동일 checkId 재요청 → 200 clear. processingMs(37928)와 completedAt−createdAt(37.928s) 일치. 명세에 없는 필드 processingMs, tenant, tenantEmployee 존재(값은 기록하지 않음). M-2 이후 대기 시간·요청 횟수는 기록하지 않음"

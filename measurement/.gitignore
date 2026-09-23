@@ -1,0 +1,8 @@
+# 인증키는 환경변수 CANDIDATE_KEY 로만 전달한다. 로컬 env 파일은 커밋하지 않는다.
+.env
+.env.*
+*.key
+__pycache__/
+*.pyc
+.venv/
+venv/

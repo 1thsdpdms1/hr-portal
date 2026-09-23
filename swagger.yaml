@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: Background Check API
+  description: |
+    API for requesting and retrieving employee background check results.
+
+    ## Usage
+    1. Submit a background check request via `POST /background-checks`.
+    2. Use the returned `checkId` to retrieve results via `GET /background-checks/{checkId}`.
+    3. Retrieve all background check history for a specific employee via `GET /background-checks?employeeId={employeeId}`.
+
+    ## Authentication
+    Every request must carry your candidate key in the `X-Candidate-Key` header.
+    The key was issued in your assignment email. Requests without a valid key are
+    rejected with `401`.
+
+    Records are scoped to the key that created them: a `checkId` created with a
+    different key responds `404`, and list queries return only your own records.
+  version: 1.1.0
+
+servers:
+  - url: https://54capvm12g.execute-api.ap-northeast-2.amazonaws.com
+    description: Production Server
+
+security:
+  - CandidateKey: []
+
+paths:
+  /background-checks:
+    post:
+      summary: Create a background check request
+      description: |
+        Creates a new background check request.
+        Returns a `checkId` that can be used to poll for results via `GET /background-checks/{checkId}`.
+        The response status may be `pending`, `clear`, or `flagged`. If `pending`, poll via `GET /background-checks/{checkId}` until the status changes to `clear` or `flagged`.
+      operationId: createBackgroundCheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackgroundCheckRequest'
+            example:
+              employeeId: "EMP-2024-001"
+              firstName: "John"
+              lastName: "Doe"
+              dateOfBirth: "1990-03-15"
+      responses:
+        '201':
+          description: Background check request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundCheckCreated'
+              example:
+                checkId: "CHK-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                employeeId: "EMP-2024-001"
+                status: "pending"
+                createdAt: "2025-01-15T09:30:00Z"
+                estimatedCompletionSeconds: 20
+                message: "Background check request has been submitted successfully."
+        '400':
+          description: Bad request (missing required fields, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Bad Request"
+                message: "Missing required field: employeeId"
+                statusCode: 400
+
+    get:
+      summary: List background checks by employee
+      description: |
+        Retrieves all background check history for a specific employee.
+        The `employeeId` query parameter is required.
+      operationId: listBackgroundChecks
+      parameters:
+        - name: employeeId
+          in: query
+          required: true
+          description: Employee ID to look up
+          schema:
+            type: string
+          example: "EMP-2024-001"
+      responses:
+        '200':
+          description: List of background checks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundCheckList'
+              example:
+                employeeId: "EMP-2024-001"
+                checks:
+                  - checkId: "CHK-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    status: "clear"
+                    createdAt: "2025-01-15T09:30:00Z"
+                    completedAt: "2025-01-15T09:31:45Z"
+                  - checkId: "CHK-f7e8d9c0-b1a2-3456-cdef-fedcba987654"
+                    status: "pending"
+                    createdAt: "2025-02-01T14:00:00Z"
+                    completedAt: null
+                totalCount: 2
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Bad Request"
+                message: "Missing required query parameter: employeeId"
+                statusCode: 400
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /background-checks/{checkId}:
+    get:
+      summary: Get background check result
+      description: |
+        Retrieves the detailed result of a specific background check.
+        A `status` of `pending` means the check is still being processed.
+        A `status` of `clear` or `flagged` means processing is complete.
+      operationId: getBackgroundCheck
+      parameters:
+        - name: checkId
+          in: path
+          required: true
+          description: Background check ID
+          schema:
+            type: string
+          example: "CHK-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        '200':
+          description: Background check detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundCheckResult'
+              example:
+                checkId: "CHK-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                employeeId: "EMP-2024-001"
+                firstName: "John"
+                lastName: "Doe"
+                dateOfBirth: "1990-03-15"
+                status: "clear"
+                criminalRecord: false
+                educationVerified: true
+                employmentVerified: true
+                creditScore: "good"
+                createdAt: "2025-01-15T09:30:00Z"
+                completedAt: "2025-01-15T09:31:45Z"
+        '404':
+          description: Background check not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Not Found"
+                message: "Background check not found: CHK-invalid-id"
+                statusCode: 404
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  securitySchemes:
+    CandidateKey:
+      type: apiKey
+      in: header
+      name: X-Candidate-Key
+      description: |
+        Candidate key issued in the assignment email.
+        Example: `bit-2609-a7f3c1`
+
+  schemas:
+    BackgroundCheckRequest:
+      type: object
+      required:
+        - employeeId
+        - firstName
+        - lastName
+        - dateOfBirth
+      properties:
+        employeeId:
+          type: string
+          description: Unique employee identifier
+          example: "EMP-2024-001"
+        firstName:
+          type: string
+          description: First name
+          example: "John"
+        lastName:
+          type: string
+          description: Last name
+          example: "Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          description: Date of birth (YYYY-MM-DD)
+          example: "1990-03-15"
+
+    BackgroundCheckCreated:
+      type: object
+      properties:
+        checkId:
+          type: string
+          description: Unique background check ID
+          example: "CHK-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        employeeId:
+          type: string
+          description: Employee ID
+        status:
+          type: string
+          enum: [pending, clear, flagged]
+          description: |
+            May return completed immediately or `pending`.
+            If `pending`, poll via `GET /background-checks/{checkId}` for the final result.
+        createdAt:
+          type: string
+          format: date-time
+          description: Request creation timestamp (UTC)
+        estimatedCompletionSeconds:
+          type: integer
+          description: |
+            Estimated seconds until the check reaches a final state.
+            Use this value to determine your polling interval.
+          example: 20
+        message:
+          type: string
+          description: Informational message
+
+    BackgroundCheckResult:
+      type: object
+      properties:
+        checkId:
+          type: string
+          description: Unique background check ID
+        employeeId:
+          type: string
+          description: Employee ID
+        firstName:
+          type: string
+          description: First name
+        lastName:
+          type: string
+          description: Last name
+        dateOfBirth:
+          type: string
+          format: date
+          description: Date of birth
+        status:
+          type: string
+          enum: [pending, clear, flagged]
+          description: |
+            Background check status:
+            - `pending`: Still being processed
+            - `clear`: No issues found
+            - `flagged`: Requires further review
+        criminalRecord:
+          type: boolean
+          description: Whether a criminal record was found (only present when completed)
+          nullable: true
+        educationVerified:
+          type: boolean
+          description: Whether education credentials were verified (only present when completed)
+          nullable: true
+        employmentVerified:
+          type: boolean
+          description: Whether employment history was verified (only present when completed)
+          nullable: true
+        creditScore:
+          type: string
+          enum: [excellent, good, fair, poor]
+          description: Credit rating (only present when completed)
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Request creation timestamp (UTC)
+        completedAt:
+          type: string
+          format: date-time
+          description: Completion timestamp (UTC, null if pending)
+          nullable: true
+
+    BackgroundCheckList:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          description: Employee ID
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              checkId:
+                type: string
+              status:
+                type: string
+                enum: [pending, clear, flagged]
+              createdAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+                nullable: true
+        totalCount:
+          type: integer
+          description: Total number of results
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Detailed error message
+        statusCode:
+          type: integer
+          description: HTTP status code
+
+    ServiceUnavailableResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "Service Unavailable"
+        message:
+          type: string
+          description: Detailed error message
+        retryAfter:
+          type: integer
+          description: Recommended wait time before retry (seconds)
+          example: 30
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 503
+
+  responses:
+    Unauthorized:
+      description: Missing or malformed X-Candidate-Key header
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+            message: "Missing or malformed X-Candidate-Key header. Use the key provided in your assignment email."
+            statusCode: 401
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal Server Error"
+            message: "Service temporarily unavailable. Please try again later."
+            statusCode: 500
+    ServiceUnavailable:
+      description: Service unavailable
+      headers:
+        Retry-After:
+          description: |
+            Number of seconds to wait before retrying the request.
+            Clients should honour this value instead of using a fixed backoff.
+          schema:
+            type: integer
+            example: 30
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceUnavailableResponse'
+          example:
+            error: "Service Unavailable"
+            message: "The service is currently overloaded. Please retry after the specified time."
+            retryAfter: 30
+            statusCode: 503

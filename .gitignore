@@ -1,0 +1,23 @@
+# 비밀값: DB 비밀번호, CANDIDATE_KEY, 시드 계정 비밀번호는 환경변수로만 전달한다.
+.env
+.env.*
+*.env
+*.key
+*.local.properties
+
+# IntelliJ: 실행 구성(.run/)과 workspace.xml에 환경변수 비밀값이 들어갈 수 있다.
+.idea/
+.run/
+*.iml
+out/
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python 측정 도구 산출물
+__pycache__/
+*.pyc
+.venv/
+venv/

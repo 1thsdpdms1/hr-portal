@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>로그인 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="login-box">
+    <h1>사내 직원 관리 시스템</h1>
+
+    <!-- 실패 이유(계정 없음, 비밀번호 틀림, 비활성, 퇴사)를 구분하지 않는다. DESIGN.md 5.2 -->
+    <p class="message error" th:if="${param.error}">
+        아이디 또는 비밀번호가 올바르지 않거나 사용할 수 없는 계정입니다.
+    </p>
+    <p class="message" th:if="${param.expired}">
+        세션이 종료되었습니다. 다시 로그인해 주세요.
+    </p>
+    <p class="message" th:if="${param.logout}">
+        로그아웃되었습니다.
+    </p>
+
+    <!-- th:action을 쓰면 Thymeleaf가 CSRF 토큰 hidden 필드를 자동으로 넣는다. -->
+    <form th:action="@{/login}" method="post">
+        <label for="username">아이디</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+        <button type="submit">로그인</button>
+    </form>
+</main>
+</body>
+</html>

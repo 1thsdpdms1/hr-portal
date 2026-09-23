@@ -1,0 +1,8 @@
+# 통합 테스트 전용. 개발 DB(hr_portal)가 아니라 테스트 DB(hr_portal_test)에만 연결한다.
+# 값은 환경변수 TEST_DB_URL / TEST_DB_USERNAME / TEST_DB_PASSWORD 또는
+# app/test-db.local.properties(저장소 제외)에서 온다. build.gradle의 test 작업 참고.
+spring:
+  datasource:
+    url: ${TEST_DB_URL}
+    username: ${TEST_DB_USERNAME}
+    password: ${TEST_DB_PASSWORD}

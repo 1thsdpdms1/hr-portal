@@ -1,0 +1,7 @@
+# 통합 테스트용 DB 접속 정보 예시.
+# 이 파일을 같은 폴더에 test-db.local.properties 이름으로 복사하고 비밀번호를 채운다.
+# test-db.local.properties는 .gitignore로 저장소에서 제외된다. 이 예시 파일에는 실제 비밀번호를 쓰지 않는다.
+# 반드시 테스트 DB(hr_portal_test)를 가리킨다. 테스트는 다른 DB에 연결되면 실패한다.
+TEST_DB_URL=jdbc:mysql://localhost:3306/hr_portal_test?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&characterEncoding=UTF-8
+TEST_DB_USERNAME=hr_app
+TEST_DB_PASSWORD=
