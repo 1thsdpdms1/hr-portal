@@ -80,6 +80,41 @@ public class Employee {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * 연락 정보 변경(DESIGN.md 4.1-B). 직원 본인도 바꿀 수 있는 두 필드만 여기서 바꾼다.
+     * 빈 문자열은 "지웠다"는 뜻이므로 NULL로 저장한다.
+     */
+    public void changeContact(String phone, String email) {
+        this.phone = blankToNull(phone);
+        this.email = blankToNull(email);
+    }
+
+    /**
+     * 신원 정보 변경(DESIGN.md 4.1-B). 관리자만 호출한다.
+     * 성·이름은 둘 다 있거나 둘 다 없어야 하고, 합치면 성명과 같아야 한다(DB CHECK ck_employee_name_split).
+     * 값 검증은 서비스에서 먼저 하고, 최종 보장은 DB가 한다.
+     */
+    public void changeIdentity(String nameKo, String familyNameKo, String givenNameKo, LocalDate birthDate) {
+        this.nameKo = nameKo;
+        this.familyNameKo = blankToNull(familyNameKo);
+        this.givenNameKo = blankToNull(givenNameKo);
+        this.birthDate = birthDate;
+    }
+
+    /** 퇴사 처리(DESIGN.md 6.3). 상태와 퇴사 시각은 항상 함께 바뀐다(DB CHECK ck_employee_terminated_at). */
+    public void terminate(Instant at) {
+        this.employmentStatus = EmploymentStatus.TERMINATED;
+        this.terminatedAt = at;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     public boolean isActive() {
         return employmentStatus == EmploymentStatus.ACTIVE;
     }

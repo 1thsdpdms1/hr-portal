@@ -15,6 +15,9 @@
         </form>
     </header>
 
+    <p class="notice" th:if="${message}" th:text="${message}">내 정보를 수정했습니다.</p>
+
+    <!-- 신원 정보는 Background Check 입력값이라 본인이 고칠 수 없다(DESIGN.md 4.1-B). -->
     <table class="detail">
         <tbody>
         <tr><th>사번</th><td th:text="${employee.empNo}">EMP-001</td></tr>
@@ -26,13 +29,26 @@
                 <span th:if="${employee.birthDate == null}" class="muted">미확인</span>
             </td>
         </tr>
-        <tr><th>연락처</th><td th:text="${employee.phone} ?: '-'">-</td></tr>
-        <tr><th>이메일</th><td th:text="${employee.email} ?: '-'">-</td></tr>
         <tr><th>재직 상태</th><td th:text="${employee.employmentStatus}">ACTIVE</td></tr>
         </tbody>
     </table>
 
-    <p class="muted">연락처와 이메일 수정은 4단계에서 추가한다. 성명·생년월일은 관리자만 고칠 수 있다.</p>
+    <h2>연락 정보 수정</h2>
+    <form th:action="@{/me}" method="post" th:object="${form}" class="form">
+        <div class="field">
+            <label for="phone">연락처</label>
+            <input type="text" id="phone" th:field="*{phone}" maxlength="20" placeholder="010-0000-0000">
+            <p class="error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}">연락처 오류</p>
+        </div>
+        <div class="field">
+            <label for="email">이메일</label>
+            <input type="text" id="email" th:field="*{email}" maxlength="254" placeholder="name@example.com">
+            <p class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">이메일 오류</p>
+        </div>
+        <button type="submit">저장</button>
+    </form>
+
+    <p class="muted">성명과 생년월일은 신원 확인과 배경 조회에 쓰이므로 관리자만 고칠 수 있습니다.</p>
 </main>
 </body>
 </html>

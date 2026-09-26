@@ -82,6 +82,15 @@ public class Account {
         return loginId == null ? null : loginId.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * 계정 비활성화(DESIGN.md 6.3). 퇴사 처리와 같은 트랜잭션에서 호출한다.
+     * 이 값이 FALSE가 되면 다음 요청에서 {@code AccountStatusFilter}가 세션을 끊는다.
+     */
+    public void deactivate(Instant at) {
+        this.active = false;
+        this.deactivatedAt = at;
+    }
+
     @PrePersist
     @PreUpdate
     void touchUpdatedAt() {
