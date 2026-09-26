@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>배경 조회 결과 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1 th:text="'배경 조회 · ' + ${check.empNo} + ' ' + ${check.employeeName}">배경 조회</h1>
+        <a th:href="@{/admin/employees/{empNo}(empNo=${check.empNo})}">직원 상세</a>
+    </header>
+
+    <p class="notice" th:if="${message}" th:text="${message}">배경 조회를 요청했습니다.</p>
+
+    <!--
+      배지를 두 개로 나눈다(DESIGN.md 6.4).
+      결과: 외부 API가 2xx 본문으로 알려 준 업무 결과
+      연동 상태: 우리 서버와 외부 API 사이의 상태
+      실측에서 GET의 59.1%가 500·503·타임아웃이었다. 둘을 한 배지에 섞으면 "조회 실패"가 "이상 있음"처럼 보인다.
+    -->
+    <div class="actions">
+        <span class="badge" th:text="'결과: ' + ${check.resultLabel()}">결과: 대기 중</span>
+        <span class="badge" id="sync-badge" th:text="'연동 상태: ' + ${check.syncLabel()}">연동 상태: 조회 중</span>
+        <span class="muted" id="next-run"></span>
+    </div>
+
+    <table class="detail">
+        <tbody>
+        <tr><th>요청 시각(UTC)</th><td th:text="${check.requestedAt}">2026-09-26T00:00:00Z</td></tr>
+        <tr><th>요청자</th><td th:text="${check.requestedByLoginId}">admin</td></tr>
+        <tr>
+            <th>외부 checkId</th>
+            <td>
+                <span th:if="${check.checkId != null}" th:text="${check.checkId}">CHK-...</span>
+                <span th:if="${check.checkId == null}" class="muted">아직 없음</span>
+            </td>
+        </tr>
+        <tr><th>외부 생성 시각</th><td th:text="${check.externalCreatedAt} ?: '-'">-</td></tr>
+        <tr><th>외부 완료 시각</th><td th:text="${check.completedAt} ?: '-'">-</td></tr>
+        <tr>
+            <th>조회 시도</th>
+            <td>
+                <span th:text="${check.pollCount} ?: 0">0</span>회
+                (연속 실패 <span th:text="${check.consecutiveFailures} ?: 0">0</span>회)
+            </td>
+        </tr>
+        <tr th:if="${check.lastErrorCode != null}">
+            <th>마지막 오류</th>
+            <!-- 오류 코드는 업무 결과가 아니다. 그대로 보여 주고 결과 배지와 섞지 않는다. -->
+            <td><span th:text="${check.lastErrorCode}">HTTP_503</span>
+                <span class="muted" th:text="${check.lastErrorAt}"></span></td>
+        </tr>
+        <tr th:if="${check.lastDiffCount != null}">
+            <th>요청 전후 목록 차이</th>
+            <td><span th:text="${check.lastDiffCount}">0</span>개 — 정확히 1개일 때만 checkId를 연결합니다</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="notice" th:if="${check.syncState.name() == 'SUBMIT_UNKNOWN'}">
+        외부에 조회가 만들어졌는지 확인하지 못했습니다. 자동으로 다시 보내지 않습니다(중복 조회가 생길 수 있습니다).
+        <span th:if="${check.preListMissing}">요청 전 목록을 받지 못해 생성 여부를 비교할 수 없습니다.</span>
+    </p>
+    <p class="notice" th:if="${check.syncState.name() == 'UNRESOLVED'}">
+        자동 확인을 중단했습니다(마감 경과 또는 연속 실패). checkId는 보존되어 있어 다시 조회할 수 있습니다.
+    </p>
+
+    <div class="actions">
+        <form th:if="${check.canRecheck()}" method="post"
+              th:action="@{/admin/background-checks/{id}/recheck(id=${check.id})}">
+            <button type="submit">다시 조회</button>
+        </form>
+        <form th:if="${check.canCloseUnknown()}" method="post"
+              th:action="@{/admin/background-checks/{id}/close-unknown(id=${check.id})}"
+              onsubmit="return confirm('이 요청을 \'생성 안 됨\'으로 종료합니다. 외부에 기록이 있었다면 연결되지 않은 채 남습니다. 진행할까요?');">
+            <button type="submit" class="danger">생성 안 됨으로 종료</button>
+        </form>
+        <span class="muted" th:if="${check.recheckRequestedAt != null}">다시 조회 요청됨 — 잠시 후 갱신됩니다</span>
+    </div>
+
+    <h2>조회 결과 상세</h2>
+    <p class="muted" th:if="${check.detailPurgedAt != null}">
+        보존 기간이 지나 상세 항목을 삭제했습니다(<span th:text="${check.detailPurgedAt}"></span>).
+    </p>
+    <table class="detail" th:if="${check.hasDetailValues()}">
+        <tbody>
+        <tr><th>범죄 기록</th><td th:text="${check.criminalRecord} ? '있음' : '없음'">없음</td></tr>
+        <tr><th>학력 확인</th><td th:text="${check.educationVerified} ? '확인됨' : '확인 안 됨'">확인됨</td></tr>
+        <tr><th>경력 확인</th><td th:text="${check.employmentVerified} ? '확인됨' : '확인 안 됨'">확인됨</td></tr>
+        <tr><th>신용 등급</th><td th:text="${check.creditScore} ?: '-'">good</td></tr>
+        </tbody>
+    </table>
+    <p class="muted" th:unless="${check.hasDetailValues()}">
+        아직 상세 항목을 받지 못했습니다. 상세는 완료된 조회의 응답에만 들어 있습니다.
+    </p>
+
+    <p class="muted">이 화면의 결과는 관리자만 볼 수 있습니다. 직원용 화면에는 배경 조회 결과가 없습니다.</p>
+</main>
+
+<!--
+  상태 자동 갱신: DB만 읽는 주소를 주기적으로 부른다. 외부 API를 부르지 않으므로 화면을 열어 둬도 부하가 없다.
+  진행 중인 상태가 아니면 새로 고침을 멈춘다.
+-->
+<script th:inline="javascript">
+    const statusUrl = /*[[@{/admin/background-checks/{id}/status(id=${check.id})}]]*/ '';
+    const active = /*[[${check.syncState.isActive()}]]*/ false;
+    if (active) {
+        const timer = setInterval(async () => {
+            try {
+                const response = await fetch(statusUrl, {headers: {'Accept': 'application/json'}});
+                if (!response.ok) { clearInterval(timer); return; }
+                const status = await response.json();
+                document.getElementById('sync-badge').textContent = '연동 상태: ' + status.syncLabel;
+                const next = document.getElementById('next-run');
+                next.textContent = status.nextRunInSeconds === null ? ''
+                    : '다음 확인까지 ' + status.nextRunInSeconds + '초';
+                if (!status.active) { clearInterval(timer); location.reload(); }
+            } catch (e) {
+                clearInterval(timer);
+            }
+        }, 5000);
+    }
+</script>
+</body>
+</html>

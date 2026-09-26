@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>배경 조회 이력 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1 th:text="'배경 조회 이력 · ' + ${employee.empNo} + ' ' + ${employee.nameKo}">배경 조회 이력</h1>
+        <a th:href="@{/admin/employees/{empNo}(empNo=${employee.empNo})}">직원 상세</a>
+    </header>
+
+    <!--
+      외부 목록 API가 아니라 우리 DB 기록을 보여 준다(DESIGN.md 4.3).
+      이유 ① 실측에서 목록 API의 200은 7회 중 1회였다. ② 외부에는 측정 스크립트가 만든 기록도 섞여 있다.
+    -->
+    <table class="list">
+        <thead>
+        <tr><th>요청 시각(UTC)</th><th>결과</th><th>연동 상태</th><th>외부 checkId</th><th>요청자</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="check : ${checks}">
+            <td><a th:href="@{/admin/background-checks/{id}(id=${check.id})}"
+                   th:text="${check.requestedAt}">2026-09-26T00:00:00Z</a></td>
+            <td th:text="${check.resultLabel()}">대기 중</td>
+            <td th:text="${check.syncLabel()}">조회 중</td>
+            <td th:text="${check.checkId} ?: '-'">-</td>
+            <td th:text="${check.requestedByLoginId}">admin</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(checks)}">
+            <td colspan="5" class="muted">조회 이력이 없습니다.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="muted">민감 상세(범죄 기록·신용 등급 등)는 각 조회의 상세 화면에서만 볼 수 있습니다.</p>
+</main>
+</body>
+</html>

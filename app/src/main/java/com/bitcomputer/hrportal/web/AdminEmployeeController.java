@@ -1,6 +1,8 @@
 package com.bitcomputer.hrportal.web;
 
 import com.bitcomputer.hrportal.account.AccountPrincipal;
+import com.bitcomputer.hrportal.bgcheck.BackgroundCheckService;
+import com.bitcomputer.hrportal.bgcheck.BackgroundCheckViews;
 import com.bitcomputer.hrportal.employee.Employee;
 import com.bitcomputer.hrportal.employee.EmployeeAdminException;
 import com.bitcomputer.hrportal.employee.EmployeeAdminService;
@@ -34,12 +36,14 @@ public class AdminEmployeeController {
     private final EmployeeRepository employees;
     private final EmployeeChangeLogRepository changeLogs;
     private final EmployeeAdminService adminService;
+    private final BackgroundCheckService backgroundChecks;
 
     public AdminEmployeeController(EmployeeRepository employees, EmployeeChangeLogRepository changeLogs,
-                                   EmployeeAdminService adminService) {
+                                   EmployeeAdminService adminService, BackgroundCheckService backgroundChecks) {
         this.employees = employees;
         this.changeLogs = changeLogs;
         this.adminService = adminService;
+        this.backgroundChecks = backgroundChecks;
     }
 
     @GetMapping("/admin/employees")
@@ -84,6 +88,7 @@ public class AdminEmployeeController {
         }
         // 이력에도 개인정보가 들어가므로 관리자 화면에서만 보여 준다(DESIGN.md 4.4).
         model.addAttribute("changeLogs", changeLogs.findViewsByEmployeeId(employee.getId()));
+        addBackgroundCheckInfo(employee, model);
         return "admin/employee-detail";
     }
 
@@ -122,12 +127,39 @@ public class AdminEmployeeController {
         return "redirect:/admin/employees/" + empNo;
     }
 
+    /**
+     * 상세 화면의 배경 조회 영역. 요청할 수 없는 상태면 <b>버튼 대신 이유</b>를 보여 준다.
+     * 같은 조건을 서비스가 다시 검사하므로(최종 방어는 DB UNIQUE), 여기서 막히지 않아도 서버가 거절한다.
+     */
+    private void addBackgroundCheckInfo(Employee employee, Model model) {
+        BackgroundCheckViews.Summary latest = backgroundChecks.findLatest(employee.getId()).orElse(null);
+        model.addAttribute("latestCheck", latest);
+
+        String reason = null;
+        if (!employee.isActive()) {
+            reason = "퇴사한 직원은 배경 조회를 요청할 수 없습니다.";
+        } else if (employee.getBirthDate() == null) {
+            reason = "생년월일 확인 후 요청할 수 있습니다(외부 API가 생년월일 없이는 400을 돌려줍니다).";
+        } else if (employee.getFamilyNameKo() == null || employee.getGivenNameKo() == null) {
+            reason = "성과 이름을 나눠 저장한 뒤 요청할 수 있습니다.";
+        } else if (latest != null && latest.syncState().isActive()) {
+            reason = "진행 중인 조회가 있습니다. 끝난 뒤에 다시 요청할 수 있습니다.";
+        } else if (latest != null && latest.syncState() == com.bitcomputer.hrportal.bgcheck.SyncState.SUBMIT_UNKNOWN) {
+            reason = "확인이 필요한 조회가 있습니다. 먼저 처리해 주세요.";
+        }
+        model.addAttribute("canRequestCheck", reason == null);
+        model.addAttribute("cannotRequestReason", reason);
+    }
+
     /** 상세 화면을 특정 HTTP 상태로 다시 그린다(폼 오류를 보여 줄 때 사용). */
     private ModelAndView detailWithStatus(Employee employee, Model model, HttpStatus status) {
         ModelAndView mav = new ModelAndView("admin/employee-detail", status);
         mav.addAllObjects(model.asMap());
         mav.addObject("employee", employee);
         mav.addObject("changeLogs", changeLogs.findViewsByEmployeeId(employee.getId()));
+        Model bgModel = new org.springframework.ui.ConcurrentModel();
+        addBackgroundCheckInfo(employee, bgModel);
+        mav.addAllObjects(bgModel.asMap());
         return mav;
     }
 

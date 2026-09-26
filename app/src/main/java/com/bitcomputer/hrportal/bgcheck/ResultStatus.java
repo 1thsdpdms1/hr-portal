@@ -25,6 +25,15 @@ public enum ResultStatus {
         return this != PENDING;
     }
 
+    /** 화면에 보여 줄 이름. flagged는 "추가 검토 필요"로 적어 연동 상태의 "확인 필요"와 구분한다(DESIGN.md 6.4). */
+    public String label() {
+        return switch (this) {
+            case PENDING -> "대기 중";
+            case CLEAR -> "이상 없음";
+            case FLAGGED -> "추가 검토 필요";
+        };
+    }
+
     public static ResultStatus fromApiValue(String value) {
         for (ResultStatus status : values()) {
             if (status.apiValue.equals(value)) {

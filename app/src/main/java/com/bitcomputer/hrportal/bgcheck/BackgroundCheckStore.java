@@ -89,6 +89,39 @@ public class BackgroundCheckStore {
     }
 
     /**
+     * 화면 자동 갱신용 상태. 다음 확인까지 남은 초도 DB가 계산한다.
+     * 이 조회는 외부 API를 부르지 않고 상태도 바꾸지 않는다(DESIGN.md 5.2).
+     */
+    @Transactional(readOnly = true)
+    public Optional<BackgroundCheckViews.Status> findStatus(long id) {
+        List<?> rows = em.createNativeQuery("""
+                SELECT sync_state, result_status,
+                       TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(6), next_run_at),
+                       poll_count, consecutive_failures, last_error_code
+                  FROM background_check WHERE id = :id
+                """)
+            .setParameter("id", id)
+            .getResultList();
+        if (rows.isEmpty()) {
+            return Optional.empty();
+        }
+        Object[] r = (Object[]) rows.get(0);
+        SyncState syncState = SyncState.valueOf((String) r[0]);
+        ResultStatus resultStatus = r[1] == null ? null : ResultStatus.fromApiValue((String) r[1]);
+        return Optional.of(new BackgroundCheckViews.Status(
+            id,
+            syncState.name(),
+            syncState.label(),
+            resultStatus == null ? null : resultStatus.apiValue(),
+            resultStatus == null ? "-" : resultStatus.label(),
+            r[2] == null ? null : Math.max(0, ((Number) r[2]).longValue()),
+            r[3] == null ? null : ((Number) r[3]).intValue(),
+            r[4] == null ? null : ((Number) r[4]).intValue(),
+            (String) r[5],
+            syncState.isActive()));
+    }
+
+    /**
      * 선점. 1이면 이 작업자가 가져간 것이고, 0이면 다른 작업자가 먼저 가져갔거나 상태가 바뀐 것이다.
      * {@code next_run_at}을 "지금 + 선점 시간"으로 밀어 두어, 그동안 다른 작업자가 같은 행을 집지 않는다.
      */

@@ -77,7 +77,7 @@ class EntityMappingTest extends MySqlIntegrationTest {
         assertThat(found.getNextRunAt()).isNotNull();
         assertThat(found.getPreListCheckIds()).as("요청 전 목록 조회 전에는 SQL NULL").isNull();
         assertThat(found.getConsecutiveFailures()).isZero();
-        assertThat(checks.findByEmployeeIdOrderByRequestedAtDesc(emp003.getId())).hasSize(1);
+        assertThat(checks.findSummaries(emp003.getId())).hasSize(1);
     }
 
     @Test

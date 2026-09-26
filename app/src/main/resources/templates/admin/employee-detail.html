@@ -93,7 +93,27 @@
         <button type="submit">저장</button>
     </form>
 
-    <!-- 6단계에서 이 자리에 Background Check 요청 버튼과 조회 이력이 들어간다(DESIGN.md 6.4). -->
+    <h2>배경 조회</h2>
+    <!--
+      요청은 QUEUED 행만 만들고 바로 응답한다. 외부 호출은 워커가 한다(DESIGN.md 6.4).
+      실측에서 정상 GET도 최대 29.7초였고 순차 GET의 59.1%가 실패였다. 화면에서 기다리면 관리자 화면이 멈춘다.
+    -->
+    <div th:if="${latestCheck != null}" class="actions">
+        <span class="badge" th:text="'결과: ' + ${latestCheck.resultLabel()}">결과: 대기 중</span>
+        <span class="badge" th:text="'연동 상태: ' + ${latestCheck.syncLabel()}">연동 상태: 정상</span>
+        <a th:href="@{/admin/background-checks/{id}(id=${latestCheck.id})}">최근 조회 상세</a>
+        <a th:href="@{/admin/employees/{empNo}/background-checks(empNo=${employee.empNo})}">전체 이력</a>
+    </div>
+    <p class="muted" th:if="${latestCheck == null}">아직 조회 이력이 없습니다.</p>
+
+    <div class="actions" th:if="${canRequestCheck}">
+        <form method="post" th:action="@{/admin/employees/{empNo}/background-checks(empNo=${employee.empNo})}">
+            <button type="submit">배경 조회 요청</button>
+        </form>
+    </div>
+    <p class="muted" th:if="${!canRequestCheck}" th:text="${cannotRequestReason}">
+        생년월일 확인 후 요청할 수 있습니다.
+    </p>
 
     <h2>변경 이력</h2>
     <table class="list">
