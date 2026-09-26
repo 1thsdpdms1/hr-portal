@@ -37,6 +37,10 @@ dependencies {
 // Windows의 Java 17은 기본 문자셋이 MS949라서, 지정하지 않으면 한글 주석·테스트 이름·메시지가 깨진다.
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    // -parameters: 컴파일된 클래스에 메서드 파라미터 이름을 남긴다.
+    // Spring Boot Gradle 플러그인은 이 옵션을 자동으로 붙이지만, IntelliJ가 자체 컴파일러로 빌드하면 빠질 수 있다.
+    // 그러면 @PathVariable 등이 이름을 찾지 못해 실행 중에만 500이 난다. 애너테이션에 이름을 적어 두는 것과 함께 이중으로 막는다.
+    options.compilerArgs << '-parameters'
 }
 
 tasks.named('test') {

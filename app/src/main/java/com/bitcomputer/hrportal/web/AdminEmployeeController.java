@@ -74,7 +74,7 @@ public class AdminEmployeeController {
     }
 
     @GetMapping("/admin/employees/{empNo}")
-    public String detail(@PathVariable String empNo, Model model) {
+    public String detail(@PathVariable("empNo") String empNo, Model model) {
         Employee employee = employees.findByEmpNo(empNo)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("employee", employee);
@@ -88,7 +88,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/admin/employees/{empNo}/edit")
-    public Object edit(@PathVariable String empNo, @AuthenticationPrincipal AccountPrincipal principal,
+    public Object edit(@PathVariable("empNo") String empNo, @AuthenticationPrincipal AccountPrincipal principal,
                        @Valid @ModelAttribute("form") EmployeeIdentityForm form, BindingResult binding,
                        Model model, RedirectAttributes redirect) {
         Employee employee = employees.findByEmpNo(empNo)
@@ -111,7 +111,7 @@ public class AdminEmployeeController {
     }
 
     @PostMapping("/admin/employees/{empNo}/terminate")
-    public String terminate(@PathVariable String empNo, @AuthenticationPrincipal AccountPrincipal principal,
+    public String terminate(@PathVariable("empNo") String empNo, @AuthenticationPrincipal AccountPrincipal principal,
                             RedirectAttributes redirect) {
         try {
             adminService.terminate(empNo, principal.getAccountId());
