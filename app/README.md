@@ -11,8 +11,10 @@ Java 17 · Spring Boot 3.5.16 · Spring Security · MySQL 8.0 · Gradle Wrapper.
 `HrPortalApplication`의 ▶를 누른 뒤 **Edit Configurations → Environment variables**에 아래 값을 넣는다. 실행 구성의 "Store as project file"은 켜지 않는다(비밀값이 저장소에 들어갈 수 있다).
 
 ```
-DB_URL=jdbc:mysql://localhost:3306/hr_portal?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&characterEncoding=UTF-8;DB_USERNAME=hr_app;DB_PASSWORD=<개발용 비밀번호>;SEED_ADMIN_PASSWORD=<관리자 비밀번호>;SEED_EMPLOYEE_PASSWORD=<직원 비밀번호>
+DB_URL=jdbc:mysql://localhost:3306/hr_portal?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&characterEncoding=UTF-8;DB_USERNAME=hr_app;DB_PASSWORD=<개발용 비밀번호>;SEED_ADMIN_PASSWORD=<관리자 비밀번호>;SEED_EMPLOYEE_PASSWORD=<직원 비밀번호>;CANDIDATE_KEY=<안내 메일의 키>
 ```
+
+`CANDIDATE_KEY`가 없으면 앱은 뜨지만 배경 조회 요청이 "요청 대기"에서 멈춘다(외부 호출을 하지 않는다). 시작 로그와 조회 상세 화면이 그 사실을 알려 준다.
 
 `SEED_*_PASSWORD`를 넣으면 앱이 시작할 때 계정을 만든다. 관리자 `admin`, 직원 `emp001`(EMP-001)이다. 이미 있는 계정은 건드리지 않으므로 나중에 값을 바꿔도 비밀번호가 되돌아가지 않는다. 환경변수를 넣지 않으면 계정을 만들지 않고 로그에 경고만 남긴다.
 

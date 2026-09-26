@@ -4,6 +4,7 @@ import com.bitcomputer.hrportal.account.AccountPrincipal;
 import com.bitcomputer.hrportal.bgcheck.BackgroundCheckRequestException;
 import com.bitcomputer.hrportal.bgcheck.BackgroundCheckService;
 import com.bitcomputer.hrportal.bgcheck.BackgroundCheckViews;
+import com.bitcomputer.hrportal.bgcheck.BgCheckProperties;
 import com.bitcomputer.hrportal.employee.Employee;
 import com.bitcomputer.hrportal.employee.EmployeeRepository;
 import org.springframework.http.HttpStatus;
@@ -34,10 +35,13 @@ public class BackgroundCheckController {
 
     private final BackgroundCheckService service;
     private final EmployeeRepository employees;
+    private final BgCheckProperties properties;
 
-    public BackgroundCheckController(BackgroundCheckService service, EmployeeRepository employees) {
+    public BackgroundCheckController(BackgroundCheckService service, EmployeeRepository employees,
+                                     BgCheckProperties properties) {
         this.service = service;
         this.employees = employees;
+        this.properties = properties;
     }
 
     /** 새 조회 요청. QUEUED 행만 만들고 상세 화면으로 보낸다. */
@@ -70,6 +74,8 @@ public class BackgroundCheckController {
         BackgroundCheckViews.Detail detail = service.findDetail(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         model.addAttribute("check", detail);
+        // 키가 없으면 워커가 외부 호출을 하지 않아 요청이 '요청 대기'에서 멈춘다. 화면에서 이유를 알려 준다.
+        model.addAttribute("candidateKeyMissing", !properties.hasCandidateKey());
         return "admin/background-check";
     }
 

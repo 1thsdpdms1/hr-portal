@@ -1,5 +1,6 @@
 package com.bitcomputer.hrportal.bgcheck;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,17 +24,32 @@ public class BackgroundCheckScheduler {
 
     private final BackgroundCheckWorker worker;
     private final BgCheckProperties properties;
+    /** 키가 없다는 경고를 tick마다 찍지 않기 위한 표시. */
+    private boolean warnedMissingKey;
 
     public BackgroundCheckScheduler(BackgroundCheckWorker worker, BgCheckProperties properties) {
         this.worker = worker;
         this.properties = properties;
     }
 
+    /** 시작할 때 상태를 남긴다. "요청했는데 아무 일도 안 일어난다"의 원인을 로그 첫머리에서 찾을 수 있게 한다. */
+    @PostConstruct
+    void logStartupState() {
+        if (properties.hasCandidateKey()) {
+            log.info("Background Check 워커 시작: {}초마다 확인한다", properties.tickDelay().toSeconds());
+        } else {
+            log.warn("환경변수 CANDIDATE_KEY가 없다. 배경 조회 요청은 저장되지만 외부 호출은 하지 않는다 "
+                + "(요청이 '요청 대기'에서 멈춘다). 실행 구성에 CANDIDATE_KEY를 넣고 다시 시작하라.");
+        }
+    }
+
     @Scheduled(fixedDelayString = "${bgcheck.tick-delay}")
     public void tick() {
         if (!properties.hasCandidateKey()) {
-            // 키가 없으면 외부 호출을 할 수 없다. 조용히 넘어가면 원인을 찾기 어려우므로 한 번씩 남긴다.
-            log.warn("환경변수 CANDIDATE_KEY가 없어 Background Check 워커가 외부 호출을 건너뛴다");
+            if (!warnedMissingKey) {
+                log.warn("CANDIDATE_KEY가 없어 Background Check 외부 호출을 건너뛴다(이 경고는 한 번만 남긴다)");
+                warnedMissingKey = true;
+            }
             return;
         }
         int processed = worker.tick();

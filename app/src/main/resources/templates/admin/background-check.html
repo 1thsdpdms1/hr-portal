@@ -60,6 +60,11 @@
         </tbody>
     </table>
 
+    <!-- 키가 없으면 워커가 외부 호출을 하지 않아 '요청 대기'에서 멈춘다. 원인을 화면에서 바로 알 수 있게 한다. -->
+    <p class="notice error" th:if="${candidateKeyMissing}">
+        서버에 외부 API 인증키(<code>CANDIDATE_KEY</code>)가 설정되어 있지 않습니다.
+        요청은 저장되었지만 외부 호출은 하지 않습니다. 실행 환경에 키를 넣고 앱을 다시 시작하면 이어서 처리됩니다.
+    </p>
     <p class="notice" th:if="${check.syncState.name() == 'SUBMIT_UNKNOWN'}">
         외부에 조회가 만들어졌는지 확인하지 못했습니다. 자동으로 다시 보내지 않습니다(중복 조회가 생길 수 있습니다).
         <span th:if="${check.preListMissing}">요청 전 목록을 받지 못해 생성 여부를 비교할 수 없습니다.</span>
