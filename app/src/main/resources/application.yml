@@ -29,3 +29,21 @@ server:
         http-only: true
         same-site: lax
         secure: ${COOKIE_SECURE:false}   # 배포(HTTPS) 환경에서는 true
+
+# Background Check 연동(DESIGN.md 8.3).
+# 타이밍 값은 MEASUREMENTS.md 11장에 기입한 결정값을 그대로 옮긴 것이다. 여기서 새 값을 만들지 않는다.
+bgcheck:
+  base-url: ${BGCHECK_BASE_URL:https://54capvm12g.execute-api.ap-northeast-2.amazonaws.com}
+  candidate-key: ${CANDIDATE_KEY:}     # 환경변수로만 받는다. 저장소·로그·화면에 남기지 않는다.
+  get-timeout: 35s                     # 11장: 정상 응답 max 29,776ms(n=203)와 약 30초형 503 max 30,588ms(n=44)를 모두 받기 위해
+  post-timeout: 5s                     # 11장: 성공 POST max 1,895ms(n=36) + 여유. 실패해도 자동 재전송하지 않는다
+  first-poll-delay: 35s                # 11장: pending 경유 서버 처리시간 최소 34,043ms(n=13) 이전에는 물어봐야 pending만 받는다
+  poll-interval: 20s                   # 11장: 폴링 간격이자 Retry-After가 없을 때의 재시도 간격
+  max-wait: 180s                       # 11장: POST 시점부터의 자동 확인 마감. 넘으면 '결과 미확인'
+  max-consecutive-failures: 8          # 11장: 일시적 실패 연속 8회면 중단(200을 받으면 0으로 되돌린다)
+  # 아래 셋은 11장에 없는 운영 값이다(DESIGN.md 8.3 [미정]). 11장 값보다 짧게/크게 두어 정책을 방해하지 않게만 맞췄다.
+  tick-delay: 5s                       # 워커 실행 간격. 20초 폴링 간격보다 충분히 짧아야 예약 시각에 가깝게 호출된다
+  lease-margin: 10s                    # 선점 시간 = 이번 호출 타임아웃 + 이 값
+  batch-size: 5                        # 한 tick에 처리할 최대 건수
+  worker:
+    enabled: ${BGCHECK_WORKER_ENABLED:true}   # 테스트에서는 꺼 두고 tick()을 직접 부른다
