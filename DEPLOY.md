@@ -15,18 +15,50 @@
 
 ---
 
-## 0. 먼저 비용을 확인한다
+## 0. 비용 (이 계정 기준)
 
-AWS 콘솔 → **Billing and Cost Management → Free tier**
+이 프로젝트가 쓰는 계정은 **2026-09-26에 만든 새 요금 체계 계정**이다. 콘솔에서 확인한 상태는 다음과 같다.
 
-| 화면에서 본 것 | 고를 인스턴스 | 예상 월 비용 |
-|---|---|---|
-| `EC2 running hours` 같은 레거시 항목이 있고 기간이 남음 | **t3.micro** (x86) | $0 (750시간/월 + EBS 30GB 무료) |
-| 항목이 없거나 만료 | **t4g.micro** (Graviton) | 약 $8~9 (인스턴스 $7~8 + gp3 8GB 약 $1) |
-| 크레딧($100~200) 잔액 있음 | 위와 같음 | 크레딧에서 차감 |
+- Free plan + **크레딧 $100** (2026-09-26 ~ 2027-09-26), 사용액 $0
+- 새 체계에는 "t2/t3.micro 750시간 무료"가 없다. EC2 사용량이 크레딧에서 차감된다.
+- 콘솔 안내: **무료 플랜 계정에는 요금이 청구되지 않는다.** 크레딧이 소진되거나 플랜 기간이 끝나면 서비스가 중지된다.
 
-2025년 7월 15일 이전에 만든 계정은 가입 후 12개월간 레거시 프리티어가 적용되고, 그 이후 계정은 크레딧 방식이다.
-어느 쪽이든 아래 절차는 같고 **인스턴스 타입만 다르다**(둘 다 이미지가 arm64/x86 모두 제공된다).
+예상 사용량: t3.micro + gp3 16GB = 하루 약 $0.35, 한 달 약 $10. 크레딧으로 충분하다.
+
+| 인스턴스 | 아키텍처 | 월 예상 | 비고 |
+|---|---|---|---|
+| **t3.micro** (권장) | x86_64 | 약 $9~10 | 로컬 Docker 검증과 같은 아키텍처 |
+| t4g.micro | arm64 | 약 $8 | 조금 싸지만 로컬 검증과 환경이 달라진다 |
+
+크레딧이 있으므로 **아키텍처를 로컬과 맞추는 쪽(t3.micro)** 을 택한다.
+
+제출·평가가 끝나면 인스턴스를 종료하고 탄력적 IP를 해제한다(7장).
+
+---
+
+## 0-1. 로컬에서 먼저 검증한다
+
+EC2에 올리기 전에 같은 컨테이너 구성을 로컬에서 돌려 본다. Dockerfile 빌드, Flyway 마이그레이션, 시드 계정 생성,
+앱↔MySQL 연결을 여기서 먼저 걸러내면 서버에서 헤맬 일이 줄어든다.
+
+```bash
+cd deploy
+cp .env.example .env          # 비밀번호는 아무 임의 문자열로 채운다. CANDIDATE_KEY를 넣으면 배경 조회까지 확인할 수 있다
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build mysql app
+docker compose logs -f app
+```
+
+`http://localhost:8080/login` 로 접속한다. 로컬 오버라이드(`docker-compose.local.yml`)는 Caddy를 띄우지 않고
+앱 포트를 직접 열며 `COOKIE_SECURE=false`로 둔다. 로컬 주소로는 HTTPS 인증서를 받을 수 없기 때문이다.
+
+정리:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml down      # 데이터 유지
+docker compose -f docker-compose.yml -f docker-compose.local.yml down -v   # 데이터까지 초기화
+```
+
+컨테이너 MySQL은 포트를 밖으로 열지 않으므로, IntelliJ로 쓰는 로컬 개발 DB(3306)와 충돌하지 않는다.
 
 ---
 
@@ -35,8 +67,8 @@ AWS 콘솔 → **Billing and Cost Management → Free tier**
 1. 리전을 **아시아 태평양(서울) ap-northeast-2** 로 바꾼다.
 2. EC2 → 인스턴스 시작
    - 이름: `hr-portal`
-   - AMI: **Amazon Linux 2023** (t4g를 고르면 arm64 AMI, t3면 x86_64 AMI를 고른다)
-   - 인스턴스 유형: 0단계에서 정한 것
+   - AMI: **Amazon Linux 2023 (x86_64)**
+   - 인스턴스 유형: **t3.micro** (0장 참고)
    - 키 페어: 새로 만들어 `.pem` 파일을 안전한 곳에 둔다
    - 스토리지: **gp3 16GB** (8GB는 도커 이미지까지 담기엔 빠듯하다)
 3. 보안 그룹(인바운드)

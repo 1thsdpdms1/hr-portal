@@ -1,0 +1,15 @@
+# 로컬에서 배포 구성을 먼저 검증하기 위한 오버라이드(DEPLOY.md 1장).
+# EC2에 올리기 전에 Dockerfile 빌드, Flyway 마이그레이션, 시드 계정 생성, 앱↔MySQL 연결을 여기서 확인한다.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build mysql app
+#   http://localhost:8080/login
+#
+# Caddy는 띄우지 않는다. 로컬 주소로는 Let's Encrypt 인증서를 받을 수 없기 때문이다.
+# 그래서 이 파일에서만 앱 포트를 직접 열고 secure 쿠키를 끈다. 배포에서는 절대 이렇게 두지 않는다.
+services:
+  app:
+    ports:
+      - "8080:8080"
+    environment:
+      # HTTP로 접속하므로 secure 쿠키를 끈다. 켜 두면 브라우저가 세션 쿠키를 저장하지 않아 로그인이 안 된다.
+      COOKIE_SECURE: "false"
