@@ -151,6 +151,9 @@ public class EmployeeAdminService {
         employee.terminate(now);
         accounts.findByEmployeeId(employee.getId()).ifPresent(account -> account.deactivate(now));
 
+        // DECISIONS.md (3): 이 자리에서 배경 조회의 민감 상세(범죄경력·신용점수·검증 결과)를 NULL로 지우고
+        // background_check.detail_purged_at 에 파기 시각을 남기기로 정했다. 되돌릴 수 없는 동작이라 이번 범위에서는 넣지 않았다.
+
         changeRecorder.recordIfChanged(employee, actorAccountId,
             EmployeeChangeRecorder.FIELD_EMPLOYMENT_STATUS, oldStatus, employee.getEmploymentStatus());
     }
