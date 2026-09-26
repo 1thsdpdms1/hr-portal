@@ -6,3 +6,8 @@ spring:
     url: ${TEST_DB_URL}
     username: ${TEST_DB_USERNAME}
     password: ${TEST_DB_PASSWORD}
+
+# 테스트는 필요한 계정을 각자 만들고 롤백한다. 시작할 때 계정을 만들면 테스트 DB에 남는다.
+seed:
+  accounts:
+    enabled: false

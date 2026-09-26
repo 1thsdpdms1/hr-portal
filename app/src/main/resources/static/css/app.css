@@ -42,3 +42,29 @@ button {
 
 .message { font-size: 14px; padding: 8px 10px; border-radius: 4px; background: #eef2ff; }
 .message.error { background: #fdecec; color: #a11; }
+
+.page { max-width: 880px; margin: 40px auto; padding: 0 16px; }
+
+.page-header { display: flex; align-items: center; justify-content: space-between; }
+
+.page-header h1 { font-size: 20px; }
+
+.link-button {
+    width: auto;
+    margin: 0;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid #bbb;
+    color: #333;
+    font-size: 13px;
+}
+
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #ddd; }
+
+th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
+
+.detail th { width: 120px; background: #fafafa; }
+
+.list thead th { background: #fafafa; }
+
+.muted { color: #888; }

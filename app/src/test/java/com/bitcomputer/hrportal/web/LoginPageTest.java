@@ -9,15 +9,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.bitcomputer.hrportal.account.AccountRepository;
+import com.bitcomputer.hrportal.config.AccountLoginService;
 import com.bitcomputer.hrportal.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 1단계 확인: DB 없이 웹 계층과 보안 규칙만 띄워 검사한다.
+ * DB 없이 웹 계층과 보안 규칙만 띄워 검사한다.
+ *
+ * <p>로그인 화면과 접근 규칙만 보므로 DB에서 계정을 읽는 부분은 가짜(mock)로 둔다.
+ * 실제 계정으로 로그인하는 흐름은 {@code AccessControlTest}가 MySQL에 붙어 확인한다.
  */
 @WebMvcTest(LoginController.class)
 @Import(SecurityConfig.class)
@@ -25,6 +32,15 @@ class LoginPageTest {
 
     @Autowired
     MockMvc mvc;
+
+    @MockitoBean
+    UserDetailsService userDetailsService;
+
+    @MockitoBean
+    AccountRepository accountRepository;
+
+    @MockitoBean
+    AccountLoginService accountLoginService;
 
     @Test
     void 로그인_화면은_로그인_없이_열리고_CSRF_토큰이_들어_있다() throws Exception {

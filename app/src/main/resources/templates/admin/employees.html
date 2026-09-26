@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>직원 목록 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1>직원 목록</h1>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="link-button">로그아웃</button>
+        </form>
+    </header>
+
+    <table class="list">
+        <thead>
+        <tr><th>사번</th><th>성명</th><th>생년월일</th><th>재직 상태</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="employee : ${employees}">
+            <td th:text="${employee.empNo}">EMP-001</td>
+            <!-- 동명이인이 있으므로 이름만으로 사람을 구분하지 않는다. 사번을 항상 함께 보여 준다. -->
+            <td th:text="${employee.nameKo}">김민준</td>
+            <td>
+                <span th:if="${employee.birthDate != null}" th:text="${employee.birthDate}">1990-03-15</span>
+                <span th:if="${employee.birthDate == null}" class="muted">미확인</span>
+            </td>
+            <td th:text="${employee.employmentStatus}">ACTIVE</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="muted">상세 조회, 직원 생성, 퇴사 처리, Background Check는 5·6단계에서 추가한다.</p>
+</main>
+</body>
+</html>

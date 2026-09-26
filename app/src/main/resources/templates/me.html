@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>내 정보 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1>내 정보</h1>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="link-button">로그아웃</button>
+        </form>
+    </header>
+
+    <table class="detail">
+        <tbody>
+        <tr><th>사번</th><td th:text="${employee.empNo}">EMP-001</td></tr>
+        <tr><th>성명</th><td th:text="${employee.nameKo}">김민준</td></tr>
+        <tr>
+            <th>생년월일</th>
+            <td>
+                <span th:if="${employee.birthDate != null}" th:text="${employee.birthDate}">1990-03-15</span>
+                <span th:if="${employee.birthDate == null}" class="muted">미확인</span>
+            </td>
+        </tr>
+        <tr><th>연락처</th><td th:text="${employee.phone} ?: '-'">-</td></tr>
+        <tr><th>이메일</th><td th:text="${employee.email} ?: '-'">-</td></tr>
+        <tr><th>재직 상태</th><td th:text="${employee.employmentStatus}">ACTIVE</td></tr>
+        </tbody>
+    </table>
+
+    <p class="muted">연락처와 이메일 수정은 4단계에서 추가한다. 성명·생년월일은 관리자만 고칠 수 있다.</p>
+</main>
+</body>
+</html>
