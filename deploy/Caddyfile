@@ -1,0 +1,21 @@
+# Caddy는 도메인만 적으면 Let's Encrypt 인증서를 자동으로 발급·갱신한다.
+# HTTPS가 필요한 이유: 세션 쿠키에 secure를 켜기 위해서다(평문 HTTP면 쿠키가 그대로 노출된다).
+{
+	# 인증서 만료 알림을 받을 주소. 비워 두면 Caddy가 익명으로 발급받는다.
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# 프록시를 거쳐도 앱이 원래 요청 주소를 알 수 있게 표준 헤더를 넘긴다.
+	reverse_proxy app:8080 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

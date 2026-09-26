@@ -22,6 +22,8 @@ spring:
     locations: classpath:db/migration
 
 server:
+  # 배포 플랫폼이 포트를 지정하는 경우가 있어 환경변수로 받는다(기본 8080).
+  port: ${PORT:8080}
   shutdown: graceful
   servlet:
     session:

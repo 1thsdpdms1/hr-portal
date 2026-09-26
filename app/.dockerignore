@@ -1,0 +1,12 @@
+# 이미지에 들어가면 안 되는 것 / 들어갈 필요가 없는 것
+# *.local.properties 에는 DB 비밀번호가 들어 있다. 이미지에 복사되지 않게 반드시 제외한다.
+*.local.properties
+.env
+.env.*
+
+build/
+.gradle/
+bin/
+out/
+.idea/
+*.iml

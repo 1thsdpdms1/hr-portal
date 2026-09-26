@@ -4,6 +4,11 @@
 *.env
 *.key
 *.local.properties
+# 값이 없는 예시 파일은 저장소에 둔다(배포 절차 문서에서 참조한다).
+!deploy/.env.example
+
+# 제출용 배포 URL과 계정 정보. 저장소에 올리지 않고 제출 메일로만 전달한다.
+*.local.md
 
 # IntelliJ: 실행 구성(.run/)과 workspace.xml에 환경변수 비밀값이 들어갈 수 있다.
 .idea/
