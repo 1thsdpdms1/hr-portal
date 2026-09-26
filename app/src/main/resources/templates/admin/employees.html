@@ -15,25 +15,35 @@
         </form>
     </header>
 
+    <p class="notice" th:if="${message}" th:text="${message}">EMP-011 직원을 만들었습니다.</p>
+
+    <div class="actions">
+        <a th:href="@{/admin/employees/new}">직원 생성</a>
+    </div>
+
     <table class="list">
         <thead>
         <tr><th>사번</th><th>성명</th><th>생년월일</th><th>재직 상태</th></tr>
         </thead>
         <tbody>
         <tr th:each="employee : ${employees}">
-            <td th:text="${employee.empNo}">EMP-001</td>
+            <td><a th:href="@{/admin/employees/{empNo}(empNo=${employee.empNo})}"
+                   th:text="${employee.empNo}">EMP-001</a></td>
             <!-- 동명이인이 있으므로 이름만으로 사람을 구분하지 않는다. 사번을 항상 함께 보여 준다. -->
             <td th:text="${employee.nameKo}">김민준</td>
             <td>
                 <span th:if="${employee.birthDate != null}" th:text="${employee.birthDate}">1990-03-15</span>
                 <span th:if="${employee.birthDate == null}" class="muted">미확인</span>
             </td>
-            <td th:text="${employee.employmentStatus}">ACTIVE</td>
+            <td>
+                <span class="badge" th:if="${employee.active}">재직</span>
+                <span class="badge terminated" th:unless="${employee.active}">퇴사</span>
+            </td>
         </tr>
         </tbody>
     </table>
 
-    <p class="muted">상세 조회, 직원 생성, 퇴사 처리, Background Check는 5·6단계에서 추가한다.</p>
+    <p class="muted">Background Check 요청과 결과 조회는 6단계에서 상세 화면에 추가합니다.</p>
 </main>
 </body>
 </html>

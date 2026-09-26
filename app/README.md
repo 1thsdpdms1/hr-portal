@@ -22,8 +22,21 @@ DB_URL=jdbc:mysql://localhost:3306/hr_portal?connectionTimeZone=UTC&forceConnect
 
 앱을 실행하면 Flyway가 `hr_portal`에 테이블을 만들고 과제 직원 10명을 넣는다. 이미 적용했다면 다시 실행해도 아무 일도 일어나지 않는다.
 
+## 화면
+
+| 주소 | 누가 | 하는 일 |
+|---|---|---|
+| `/login` | 누구나 | 로그인. 실패 문구는 원인과 상관없이 같다(계정 존재 여부를 알려 주지 않는다). |
+| `/me` | 직원 | 내 정보 조회와 **연락처·이메일 수정**. 성명·생년월일은 읽기 전용이다(배경 조회 입력값이라 관리자만 고친다). |
+| `/admin/employees` | 관리자 | 직원 목록(사번·성명·생년월일·재직 상태). 사번을 누르면 상세로 간다. |
+| `/admin/employees/new` | 관리자 | 직원 생성. 사번은 서버가 발급하고(현재 최대 + 1), 로그인 계정을 같은 트랜잭션에서 만든다. |
+| `/admin/employees/{사번}` | 관리자 | 상세, 신원·연락 정보 수정, 퇴사 처리, 변경 이력. Background Check 영역은 6단계에서 붙인다. |
+
+모든 변경(본인 수정, 관리자 수정, 퇴사 처리)은 `employee_change_log`에 바뀐 필드만 한 줄씩 남는다.
+퇴사 처리는 직원 상태와 로그인 계정 비활성화를 한 트랜잭션에서 처리하므로, 그 직원은 **다음 요청부터** 로그인 화면으로 밀린다.
+
 ## 테스트
 ```
 gradlew.bat test
 ```
-1단계 테스트(`LoginPageTest`)는 DB 없이 돌아간다.
+`LoginPageTest`는 DB 없이 돌아간다. 나머지는 `hr_portal_test`에 연결한다(`test-db.local.properties` 필요).

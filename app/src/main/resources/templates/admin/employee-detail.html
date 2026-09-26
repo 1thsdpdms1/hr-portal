@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${employee.empNo} + ' 상세 · 사내 직원 관리 시스템'">직원 상세</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1 th:text="${employee.empNo} + ' ' + ${employee.nameKo}">EMP-001 김민준</h1>
+        <a th:href="@{/admin/employees}">직원 목록</a>
+    </header>
+
+    <p class="notice" th:if="${message}" th:text="${message}">직원 정보를 수정했습니다.</p>
+
+    <table class="detail">
+        <tbody>
+        <tr><th>사번</th><td th:text="${employee.empNo}">EMP-001</td></tr>
+        <tr>
+            <th>성 / 이름</th>
+            <td>
+                <span th:if="${employee.familyNameKo != null}"
+                      th:text="${employee.familyNameKo} + ' / ' + ${employee.givenNameKo}">김 / 민준</span>
+                <span th:if="${employee.familyNameKo == null}" class="muted">분리 미확인</span>
+            </td>
+        </tr>
+        <tr>
+            <th>생년월일</th>
+            <td>
+                <span th:if="${employee.birthDate != null}" th:text="${employee.birthDate}">1990-03-15</span>
+                <span th:if="${employee.birthDate == null}" class="muted">미확인 — 배경 조회를 요청할 수 없습니다</span>
+            </td>
+        </tr>
+        <tr><th>연락처</th><td th:text="${employee.phone} ?: '-'">-</td></tr>
+        <tr><th>이메일</th><td th:text="${employee.email} ?: '-'">-</td></tr>
+        <tr>
+            <th>재직 상태</th>
+            <td>
+                <span class="badge" th:if="${employee.active}">재직</span>
+                <span class="badge terminated" th:unless="${employee.active}">퇴사</span>
+                <span class="muted" th:if="${employee.terminatedAt != null}" th:text="' ' + ${employee.terminatedAt}">시각</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="actions" th:if="${employee.active}">
+        <!-- 퇴사 처리는 계정 비활성화와 함께 일어난다. 되돌리는 화면은 없으므로 한 번 더 확인받는다. -->
+        <form th:action="@{/admin/employees/{empNo}/terminate(empNo=${employee.empNo})}" method="post"
+              onsubmit="return confirm('퇴사 처리하면 이 직원의 로그인 계정도 즉시 막힙니다. 진행할까요?');">
+            <button type="submit" class="danger">퇴사 처리</button>
+        </form>
+    </div>
+
+    <h2>신원·연락 정보 수정</h2>
+    <form th:action="@{/admin/employees/{empNo}/edit(empNo=${employee.empNo})}" method="post"
+          th:object="${form}" class="form">
+        <p class="error" th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}"
+           th:text="${err}">성/이름 불일치</p>
+        <div class="field">
+            <label for="nameKo">성명 *</label>
+            <input type="text" id="nameKo" th:field="*{nameKo}" maxlength="50">
+            <p class="error" th:if="${#fields.hasErrors('nameKo')}" th:errors="*{nameKo}">성명 오류</p>
+        </div>
+        <div class="field">
+            <label for="familyNameKo">성</label>
+            <input type="text" id="familyNameKo" th:field="*{familyNameKo}" maxlength="10">
+            <p class="error" th:if="${#fields.hasErrors('familyNameKo')}" th:errors="*{familyNameKo}">성 오류</p>
+        </div>
+        <div class="field">
+            <label for="givenNameKo">이름</label>
+            <input type="text" id="givenNameKo" th:field="*{givenNameKo}" maxlength="30">
+            <p class="hint">성 + 이름은 성명과 같아야 합니다. 외부 API에는 성을 lastName, 이름을 firstName으로 보냅니다.</p>
+            <p class="error" th:if="${#fields.hasErrors('givenNameKo')}" th:errors="*{givenNameKo}">이름 오류</p>
+        </div>
+        <div class="field">
+            <label for="birthDate">생년월일</label>
+            <input type="date" id="birthDate" th:field="*{birthDate}">
+            <p class="error" th:if="${#fields.hasErrors('birthDate')}" th:errors="*{birthDate}">생년월일 오류</p>
+        </div>
+        <div class="field">
+            <label for="phone">연락처</label>
+            <input type="text" id="phone" th:field="*{phone}" maxlength="20">
+            <p class="error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}">연락처 오류</p>
+        </div>
+        <div class="field">
+            <label for="email">이메일</label>
+            <input type="text" id="email" th:field="*{email}" maxlength="254">
+            <p class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">이메일 오류</p>
+        </div>
+        <button type="submit">저장</button>
+    </form>
+
+    <!-- 6단계에서 이 자리에 Background Check 요청 버튼과 조회 이력이 들어간다(DESIGN.md 6.4). -->
+
+    <h2>변경 이력</h2>
+    <table class="list">
+        <thead>
+        <tr><th>변경 시각(UTC)</th><th>항목</th><th>이전</th><th>이후</th><th>변경자</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="log : ${changeLogs}">
+            <td th:text="${log.changedAt}">2026-09-26T00:00:00Z</td>
+            <td th:text="${log.fieldName}">phone</td>
+            <td th:text="${log.oldValue} ?: '-'">-</td>
+            <td th:text="${log.newValue} ?: '-'">010-0000-0000</td>
+            <td th:text="${log.changedBy.loginId}">admin</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(changeLogs)}">
+            <td colspan="5" class="muted">변경 이력이 없습니다.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

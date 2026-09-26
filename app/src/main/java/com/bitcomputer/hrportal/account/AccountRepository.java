@@ -14,6 +14,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     boolean existsByLoginId(String loginId);
 
+    /** 퇴사 처리에서 직원의 계정을 함께 비활성화할 때 쓴다(DESIGN.md 6.3). 계정이 없을 수도 있다. */
+    Optional<Account> findByEmployeeId(Long employeeId);
+
     /** 로그인할 때 계정과 연결 직원을 한 번에 읽는다(지연 로딩 없이). */
     @Query("select a from Account a left join fetch a.employee where a.loginId = :loginId")
     Optional<Account> findByLoginIdWithEmployee(@Param("loginId") String loginId);

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>직원 생성 · 사내 직원 관리 시스템</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page">
+    <header class="page-header">
+        <h1>직원 생성</h1>
+        <a th:href="@{/admin/employees}">직원 목록</a>
+    </header>
+
+    <p class="notice error" th:if="${errorMessage}" th:text="${errorMessage}">이미 있는 로그인 ID</p>
+
+    <form th:action="@{/admin/employees}" method="post" th:object="${form}" class="form">
+        <div class="field">
+            <label for="nameKo">성명 *</label>
+            <input type="text" id="nameKo" th:field="*{nameKo}" maxlength="50" placeholder="김민준">
+            <p class="error" th:if="${#fields.hasErrors('nameKo')}" th:errors="*{nameKo}">성명 오류</p>
+        </div>
+        <div class="field">
+            <label for="familyNameKo">성</label>
+            <input type="text" id="familyNameKo" th:field="*{familyNameKo}" maxlength="10" placeholder="김">
+            <p class="error" th:if="${#fields.hasErrors('familyNameKo')}" th:errors="*{familyNameKo}">성 오류</p>
+        </div>
+        <div class="field">
+            <label for="givenNameKo">이름</label>
+            <input type="text" id="givenNameKo" th:field="*{givenNameKo}" maxlength="30" placeholder="민준">
+            <!-- 복성(남궁·황보·선우)은 규칙으로 자를 수 없어 사람이 확인해 넣는다. 성 + 이름은 성명과 같아야 한다. -->
+            <p class="hint">성과 이름을 합치면 성명과 같아야 합니다. 둘 다 비워 두면 "분리 미확인"으로 저장됩니다.</p>
+            <p class="error" th:if="${#fields.hasErrors('givenNameKo')}" th:errors="*{givenNameKo}">이름 오류</p>
+            <p class="error" th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}" th:text="${err}">성/이름 불일치</p>
+        </div>
+        <div class="field">
+            <label for="birthDate">생년월일</label>
+            <input type="date" id="birthDate" th:field="*{birthDate}">
+            <p class="hint">확인되지 않았으면 비워 둡니다. 임의의 값을 넣으면 그 값으로 배경 조회가 실행됩니다.</p>
+            <p class="error" th:if="${#fields.hasErrors('birthDate')}" th:errors="*{birthDate}">생년월일 오류</p>
+        </div>
+        <div class="field">
+            <label for="phone">연락처</label>
+            <input type="text" id="phone" th:field="*{phone}" maxlength="20">
+            <p class="error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}">연락처 오류</p>
+        </div>
+        <div class="field">
+            <label for="email">이메일</label>
+            <input type="text" id="email" th:field="*{email}" maxlength="254">
+            <p class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">이메일 오류</p>
+        </div>
+
+        <h2>로그인 계정</h2>
+        <div class="field">
+            <label for="loginId">로그인 ID *</label>
+            <input type="text" id="loginId" th:field="*{loginId}" maxlength="50" placeholder="emp011">
+            <p class="error" th:if="${#fields.hasErrors('loginId')}" th:errors="*{loginId}">로그인 ID 오류</p>
+        </div>
+        <div class="field">
+            <label for="password">초기 비밀번호 *</label>
+            <!-- 값은 해시로만 저장하고 화면에 다시 내려보내지 않는다. -->
+            <input type="password" id="password" th:field="*{password}" maxlength="100" autocomplete="new-password">
+            <p class="hint">10자 이상. 저장은 BCrypt 해시로만 합니다.</p>
+            <p class="error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">비밀번호 오류</p>
+        </div>
+
+        <button type="submit">직원 만들기</button>
+    </form>
+
+    <p class="muted">사번은 서버가 발급합니다(현재 최대 번호 + 1).</p>
+</main>
+</body>
+</html>
