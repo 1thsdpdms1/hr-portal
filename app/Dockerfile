@@ -7,6 +7,10 @@
 FROM eclipse-temurin:17-jdk AS build
 WORKDIR /src
 
+# 빌드 JVM의 힙을 못 박는다. 기본값은 컨테이너에 보이는 메모리의 1/4이라, 1GB 인스턴스(t3.micro)에서는
+# 256MB로 잡혀 컴파일 도중 OOM이 날 수 있다. 개발 PC와 서버에서 같은 값으로 빌드하려는 목적도 있다.
+ENV GRADLE_OPTS="-Xmx512m"
+
 # 의존성 목록을 먼저 복사해 받아 둔다. 소스만 바뀌면 이 계층은 캐시에서 재사용된다.
 COPY gradlew ./
 COPY gradle ./gradle
