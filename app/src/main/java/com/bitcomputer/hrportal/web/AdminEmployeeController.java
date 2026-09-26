@@ -83,7 +83,7 @@ public class AdminEmployeeController {
                 employee.getGivenNameKo(), employee.getBirthDate(), employee.getPhone(), employee.getEmail()));
         }
         // 이력에도 개인정보가 들어가므로 관리자 화면에서만 보여 준다(DESIGN.md 4.4).
-        model.addAttribute("changeLogs", changeLogs.findByEmployeeIdOrderByChangedAtDesc(employee.getId()));
+        model.addAttribute("changeLogs", changeLogs.findViewsByEmployeeId(employee.getId()));
         return "admin/employee-detail";
     }
 
@@ -127,7 +127,7 @@ public class AdminEmployeeController {
         ModelAndView mav = new ModelAndView("admin/employee-detail", status);
         mav.addAllObjects(model.asMap());
         mav.addObject("employee", employee);
-        mav.addObject("changeLogs", changeLogs.findByEmployeeIdOrderByChangedAtDesc(employee.getId()));
+        mav.addObject("changeLogs", changeLogs.findViewsByEmployeeId(employee.getId()));
         return mav;
     }
 

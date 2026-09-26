@@ -106,7 +106,7 @@
             <td th:text="${log.fieldName}">phone</td>
             <td th:text="${log.oldValue} ?: '-'">-</td>
             <td th:text="${log.newValue} ?: '-'">010-0000-0000</td>
-            <td th:text="${log.changedBy.loginId}">admin</td>
+            <td th:text="${log.changedByLoginId}">admin</td>
         </tr>
         <tr th:if="${#lists.isEmpty(changeLogs)}">
             <td colspan="5" class="muted">변경 이력이 없습니다.</td>
