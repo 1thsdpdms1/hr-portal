@@ -143,7 +143,7 @@ python measure_background_api.py concurrency --method post --levels 1,3 --reques
    - POST 동시성은 `--method post` 로만, 단계당 최대 5·총 요청 기본 15건(절대 30건) 상한, 합성 employeeId(`CC-…`) 사용.
 8. **측정 데이터와 업무 데이터 분리.** lifecycle 은 시드 직원이 아닌 합성 ID `LC-<runId>-001` 을 쓴다.
    (duplicate 만 과제 요구대로 EMP-001 을 사용)
-9. **수동 관찰은 별도 파일.** 직접 확인한 1차 결과는 `data/manual_observations.csv` 에만 기록하고 MEASUREMENTS.md **부록 A** 로 분리했다.
+9. **수동 관찰은 별도 파일.** 직접 확인한 1차 결과는 `data/manual_observations.csv` 에만 기록한다. 응답시간이 없어 어떤 통계에도 넣을 수 없으므로 MEASUREMENTS.md 본문에도 싣지 않는다.
    기록되지 않은 요청별 latency·요청 시각·관찰 사이 요청 횟수는 컬럼 자체를 두지 않았다. 1~9장의 통계는 자동 측정만으로 계산한다.
 10. **중단돼도 이어서 측정.** lifecycle 은 POST 직후 checkId 가 CSV 에 저장되므로 `resume` 으로 재개한다.
     처리시간은 서버 시각(completedAt − createdAt)이라 재개해도 유효하다.
@@ -184,7 +184,7 @@ python measure_background_api.py concurrency --method post --levels 1,3 --reques
    현재 모든 항목이 `근거 충족` 또는 `근거 있음` 이다.
 3. **11장 "최종 결정"** — `<!-- MANUAL:START -->` ~ `<!-- MANUAL:END -->` 블록. 지원자가 직접 결정값과 근거를 쓴다.
    `report` 를 다시 돌려도 이 블록은 보존된다(블록이 여러 개면 기본 템플릿이 아닌 마지막 블록을 보존). 숫자는 자동, 판단은 사람.
-4. **부록 A** — 수동 관찰. 어떤 통계에도 포함하지 않는다.
+4. 수동 관찰은 `data/manual_observations.csv` 에만 있다. 어떤 통계에도 포함하지 않는다.
 
 ---
 

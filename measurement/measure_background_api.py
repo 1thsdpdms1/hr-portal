@@ -1307,8 +1307,10 @@ def generate_report(spec: Spec):
       "따라서 p99 는 '관측된 꼬리'로만 해석하고 단일 확정값으로 쓰지 않는다.")
     w("- **용어 구분**: `httpStatus`(200/201/503 …)는 전송 계층 결과, `apiStatus`(pending/clear/flagged)는 "
       "2xx 응답 body 의 업무 상태다. 두 값은 별도 컬럼으로 기록하며 섞지 않는다.")
-    w(f"- **수동 관찰**: `data/manual_observations.csv` 에 별도 기록({len(manual_obs)}건)하고 **부록 A** 에만 표시한다. "
-      "1~9장의 모든 통계는 자동 측정만으로 계산한다.")
+    w(f"- **수동 관찰**: 첫 회 손으로 확인한 {len(manual_obs)}건은 `data/manual_observations.csv` 에 따로 남겨 두었고, "
+      "응답시간 기록이 없어 **이 문서의 어떤 통계에도 포함하지 않는다**. 모든 수치는 자동 측정만으로 계산한다.")
+    w("- **이 문서의 범위**: 과제 설명서 [제출물 2]가 요구한 항목만 싣는다(2~7장). 8장은 재시도·폴링 값을 정하는 데 "
+      "쓴 근거이고, 11장이 그 결정이다. 요구되지 않은 집계는 원시 CSV 에 남아 있으므로 `report` 를 고치면 다시 뽑을 수 있다.")
     w("")
     if runs:
         rows = []
@@ -1356,30 +1358,9 @@ def generate_report(spec: Spec):
         ci_rows.append([f"p{int(q * 100)}", rank, stat_cell(all200, q), quantile_ci_cell(all200, q)])
     L.extend(md_table(["통계", "nearest-rank 순위", "값 (ms)", "95% 신뢰구간 (ms, 순위)"], ci_rows))
     w("")
-    w("### 2.2 HTTP 상태코드별 지연 (자동 측정 전체)")
-    w("")
-    by_code = defaultdict(list)
-    for r in get_one:
-        by_code[r["httpStatus"]].append(r)
-    if by_code:
-        L.extend(md_table(LAT_HEADERS, [latency_stat_row(f"HTTP {c}", lat(rs))
-                                        for c, rs in sorted(by_code.items(), key=lambda kv: status_code_key(kv[0]))]))
-    else:
-        w("TBD — 자동 측정 없음")
-    w("")
-    w("### 2.3 업무 상태별 지연 (HTTP 200 중 apiStatus 기준)")
-    w("")
-    by_api = defaultdict(list)
-    for r in get_one:
-        if r["httpStatus"] == "200":
-            by_api[r["apiStatus"] or "(없음)"].append(r)
-    if by_api:
-        L.extend(md_table(LAT_HEADERS, [latency_stat_row(f"apiStatus={k}", lat(v)) for k, v in sorted(by_api.items())]))
-    else:
-        w("TBD — 자동 측정 없음")
-    w("")
     post_rows = [r for r in auto if r["method"] == "POST" and r["endpoint"] == EP_CHECKS]
-    w("### 2.4 참고: POST /background-checks 지연 (HTTP 201)")
+    # POST 지연은 요구 항목은 아니지만 11장의 POST 타임아웃 근거라서 남긴다.
+    w("### 2.2 POST /background-checks 지연 (HTTP 201) — POST 타임아웃 근거")
     w("")
     L.extend(md_table(LAT_HEADERS, [latency_stat_row("POST 201", lat([r for r in post_rows if r["httpStatus"] == "201"]))]))
     exc = [r for r in auto if r["httpStatus"].startswith("EXC:")]
@@ -1392,6 +1373,9 @@ def generate_report(spec: Spec):
     w("## 3. HTTP 상태코드별 건수와 비율")
     w("")
     w("### 3.1 자동 측정 전체")
+    w("")
+    w("> 400·401·404 는 대부분 `errors` 명령으로 **일부러 만든 오류 요청**이다(7.5 참조). "
+      "정상 사용에서 나온 비율이 아니므로 3.2 의 테스트 유형별 분해와 함께 본다.")
     w("")
     cnt = Counter(r["httpStatus"] for r in auto)
     if cnt:
@@ -1414,13 +1398,6 @@ def generate_report(spec: Spec):
         L.extend(md_table(["testType", "endpoint", "n"] + codes, rows))
     else:
         w("TBD — 자동 측정 없음")
-    w("")
-    w("### 3.3 GET /{checkId} HTTP 200 응답의 업무 상태(apiStatus) 분포 — HTTP 상태와 별개")
-    w("")
-    api_cnt = Counter(r["apiStatus"] or "(없음)" for r in get_one if r["httpStatus"] == "200")
-    tot200 = sum(api_cnt.values())
-    L.extend(md_table(["apiStatus", "건수 / HTTP 200 전체"], [[k, ratio(v, tot200)] for k, v in sorted(api_cnt.items())])
-             if api_cnt else ["TBD — 자동 측정 없음"])
     w("")
 
     # ---------- 4. 반복 POST ----------
@@ -1642,6 +1619,13 @@ def generate_report(spec: Spec):
     # ---------- 7. Swagger 대조 ----------
     w("## 7. Swagger 명세와 실제 동작 비교")
     w("")
+    # 과제가 물은 세 가지 질문에 먼저 답하고, 근거 표는 7.1 이후에 둔다.
+    # 아래 표들을 만들며 모은 값으로 채우기 위해, 이 자리를 비워 두고 마지막에 끼워 넣는다.
+    sec7_at = len(L)
+    q_undefined_codes = Counter()   # 명세에 없는데 관측된 상태코드
+    q_unobserved_codes = []         # 명세에 있으나 관측되지 않은 상태코드
+    q_extra_fields = Counter()      # 명세에 없으나 응답에 있던 필드
+    q_notobs_fields = Counter()     # 명세에 있으나 이번 응답에서 관찰되지 않은 필드
     w("### 7.1 HTTP 상태코드: 명세 정의 vs 실제 관측 (자동 측정)")
     w("")
     ops = [("POST", EP_CHECKS), ("GET", EP_CHECKS), ("GET", EP_CHECK)]
@@ -1651,6 +1635,8 @@ def generate_report(spec: Spec):
         defined = spec.defined_statuses(ep, m) if spec.doc else []
         undefined_obs = {c: n for c, n in observed.items() if c.isdigit() and c not in defined}
         unobserved = [c for c in defined if c not in observed]
+        q_undefined_codes.update(undefined_obs)
+        q_unobserved_codes.extend(f"{m} {ep}: {c}" for c in unobserved)
         rows.append([f"{m} {ep}", ", ".join(defined) or "(명세 읽기 실패)",
                      ", ".join(f"{c}×{n}" for c, n in sorted(observed.items(), key=lambda kv: status_code_key(kv[0]))) or "관측 없음",
                      ", ".join(f"{c}×{n}" for c, n in undefined_obs.items()) or "없음",
@@ -1683,6 +1669,10 @@ def generate_report(spec: Spec):
                 req.update(cls["required"])
                 pend.update(cls["completion_only"])
                 notobs.update(cls["not_observed"])
+
+            # 어느 응답에서 나온 것인지 함께 남긴다. 필드 이름만 모으면 7.0 에서 맥락이 사라진다.
+            q_extra_fields.update({(k, f"{m} {ep}", code): v for k, v in ex.items()})
+            q_notobs_fields.update({(k, f"{m} {ep}", code): v for k, v in notobs.items()})
 
             def fmt(cn):
                 return ", ".join(f"{k} ({v}/{n})" for k, v in sorted(cn.items()))
@@ -1766,6 +1756,46 @@ def generate_report(spec: Spec):
     else:
         w("TBD — errors 측정 미실행")
     w("")
+
+    # 7.0 — 과제가 물은 세 질문에 대한 답. 위에서 모은 값만 쓰고 새로 계산하지 않는다.
+    all503 = [r for r in auto if r["httpStatus"] == "503"]
+    hdr503 = sum(1 for r in all503 if (r.get("retryAfterHeader") or "").strip())
+
+    def _fmt_counter(cn, unit=""):
+        return ", ".join(f"`{k}` {v}건{unit}" for k, v in cn.most_common()) if cn else "없음"
+
+    def _fmt_fields(cn):
+        """(필드, operation, 코드) 카운터를 응답별로 묶어 한 줄씩 낸다."""
+        if not cn:
+            return "없음"
+        grouped = defaultdict(list)
+        for (field, op, code), v in cn.most_common():
+            grouped[(op, code)].append(f"`{field}` {v}건")
+        return "; ".join(f"{op} {code} 응답 — " + ", ".join(items) for (op, code), items in grouped.items())
+
+    summary = ["### 7.0 요약 — 세 가지 질문에 대한 답", ""]
+    summary += [
+        "**① 명세에 적혀 있으나 실제로는 확인되지 않은 것**",
+        "",
+        f"- 응답 필드: {_fmt_fields(q_notobs_fields)} (7.2). 이 swagger 의 응답 스키마에는 `required` 가 없으므로 "
+        "명세 위반이 아니라 '이번 측정에서 관찰되지 않음'으로 기록한다.",
+        f"- 503 의 `Retry-After` **헤더**: 명세는 헤더 제공을 기술하지만 {ratio(hdr503, len(all503))} 이었다 (7.3, 8장).",
+        f"- 상태코드: {', '.join(q_unobserved_codes) if q_unobserved_codes else '명세 정의 코드 중 미관측 없음'} (7.1).",
+        "",
+        "**② 명세에 없으나 실제 호출에서 발견한 동작**",
+        "",
+        f"- 응답 필드: {_fmt_fields(q_extra_fields)} (7.2). 발견 사실만 적고 의미는 확정하지 않는다.",
+        f"- 상태코드: {_fmt_counter(q_undefined_codes)} (7.1).",
+        "- 503 이 성격이 다른 **두 종류**로 나뉜다 — 즉시 오는 것과 약 30초 뒤에 오는 것 (8.0).",
+        "- 같은 employeeId 로 반복 POST 했을 때의 동작이 명세에 기술되어 있지 않다 (7.4) → 실측은 4장.",
+        "",
+        "**③ 명세에 적힌 값이 실제 상황에 맞지 않는다고 판단한 것**",
+        "",
+        "- `estimatedCompletionSeconds` — 명세 예시값은 20초이고 '폴링 주기 결정에 쓰라'고 기술되어 있다. "
+        "그러나 이 필드는 한 번도 오지 않았고(7.3), 실제 처리시간은 5장의 값이다. 폴링 주기의 근거로 쓸 수 없다.",
+        "",
+    ]
+    L[sec7_at:sec7_at] = summary
 
     # ---------- 8. 503 / Retry-After ----------
     w("## 8. 503 및 Retry-After 관찰 결과")
@@ -1970,7 +2000,7 @@ def generate_report(spec: Spec):
     w("")
     w("- 단일 클라이언트·단일 네트워크 위치·측정 기간 내의 결과이며, 서버 측 부하나 다른 지원자 트래픽은 알 수 없다.")
     w("- 지연은 클라이언트 wall-clock 이므로 DNS/TLS/네트워크 변동이 포함된다 (세션 재사용으로 연결 수립은 대부분 제외).")
-    w("- latency 테스트는 완료된 checkId 1건을 반복 조회한다. pending 중 조회 지연은 2.3의 lifecycle 폴링 표본으로만 확인된다.")
+    w("- latency 테스트는 완료된 checkId 1건을 반복 조회한다. pending 중 조회 지연은 2.1의 lifecycle 폴링 행으로만 확인된다.")
     w("- 클라이언트 관측 처리시간은 폴링 간격과 503 대기만큼 과대 측정된다 → 서버 시각 기반 값을 1차 근거로 사용.")
     w("- lifecycle 은 합성 employeeId(`LC-...`)와 고정 이름/생년월일로 측정했다. 이름·생년월일에 따라 결과(clear/flagged, 처리시간)가 달라지는지는 측정하지 않았다.")
     w("- 동시성 테스트는 외부 API 보호를 위해 낮은 단계만 측정했다. 측정 최대 단계를 넘는 동시성의 거동은 알 수 없다.")
@@ -1981,32 +2011,15 @@ def generate_report(spec: Spec):
       "즉 n=100 에서도 p99 는 크게 불확실하며, 상위 1~2건의 이상치에 따라 값이 크게 달라진다.")
     w("- 측정용 타임아웃(기본 30s)에서 끊은 요청은 그 뒤의 응답 여부를 모른다(우측 절단). 지연 통계는 응답을 받은 요청만으로 계산했다.")
     w("- 중단 후 `resume` 으로 확인한 건은 서버 시각 기반 처리시간만 유효하고 클라이언트 관측 처리시간은 없다. 최종 상태에 도달하지 못한 건은 처리시간 통계에서 제외했다.")
-    w("- 수동 관찰(부록 A)은 요청별 응답시간·요청 시각·요청 횟수가 기록되지 않았으므로 어떤 통계에도 포함하지 않았다.")
+    w("- 수동 관찰(`data/manual_observations.csv`)은 요청별 응답시간·요청 시각·요청 횟수가 기록되지 않았으므로 어떤 통계에도 포함하지 않았고, 이 문서에도 싣지 않았다.")
     if len(get200) < MIN_N_FOR_PERCENTILE[0.99]:
         w(f"- GET 200 지연 표본 n={len(get200)} < 100 → p99 는 표본 부족 (추가 측정 필요)")
     if len(done) < MIN_LIFECYCLE_N:
         w(f"- 처리시간 완료 표본 n={len(done)} < {MIN_LIFECYCLE_N} → 추가 측정 필요")
     w("")
 
-    # ---------- 부록 A. 수동 관찰 ----------
-    w("## 부록 A. 수동 관찰 (자동 측정 통계와 분리)")
-    w("")
-    w("> `data/manual_observations.csv`. 지원자가 직접 호출해 확인한 사실만 적었다. 요청별 응답시간·요청 시각·"
-      "관찰 사이의 요청 횟수는 기록되지 않았으므로 비워 두며, 1~9장의 어떤 통계에도 포함하지 않는다. "
-      "관찰 건수가 1~3건이므로 API 의 일반적 특성으로 단정하지 않는다.")
-    w("")
-    if manual_obs:
-        L.extend(md_table(["ID", "관찰 순서", "요청", "HTTP", "apiStatus", "retryAfter(body)", "createdAt", "completedAt",
-                           "processingMs", "명세에 없는 필드(이름)", "관찰되지 않은 명세 필드", "비고"],
-                          [[r["observationId"], r["observedOrder"], f"{r['method']} {r['endpoint']}", r["httpStatus"],
-                            r["apiStatus"], r["retryAfterBody"], r["createdAt"], r["completedAt"], r["processingMs"],
-                            ", ".join(split_list(r["observedExtraFields"])), ", ".join(split_list(r["notObservedFields"])),
-                            r["note"]] for r in manual_obs]))
-        w("")
-        w("- 관찰 순서는 기록된 순서일 뿐이며, 그 사이에 몇 번 요청했는지는 기록되지 않았다.")
-    else:
-        w("수동 관찰 기록 없음")
-    w("")
+    # 수동 관찰은 표로 싣지 않는다. 응답시간 기록이 없어 어떤 통계에도 못 들어가고,
+    # 과제가 요구한 항목도 아니다. 원본은 data/manual_observations.csv 에 남아 있다.
     w(extract_manual_block())
     w("")
 
