@@ -1233,26 +1233,47 @@ DEFAULT_MANUAL_BLOCK = f"""{MANUAL_START}
 {MANUAL_END}"""
 
 
-def extract_manual_block():
+SUMMARY_START = "<!-- SUMMARY:START -->"
+SUMMARY_END = "<!-- SUMMARY:END -->"
+DEFAULT_SUMMARY_BLOCK = f"""{SUMMARY_START}
+## 0. 한눈에 보기 (지원자 직접 기입 — `report` 재생성 시 이 블록은 보존됨)
+
+> 11장에서 정한 값과 그 근거를 한 표로 모은다. 결정은 자동으로 채우지 않는다.
+
+| 항목 | 결정값 | 실측 근거 | 상세 |
+|---|---|---|---|
+| (TBD) | TBD | | |
+{SUMMARY_END}"""
+
+
+def _extract_block(start, end, default):
+    """MEASUREMENTS.md 에서 지원자가 직접 쓴 블록을 보존한다.
+    블록이 여러 개면 기본 템플릿이 아닌 마지막 것을 남긴다(템플릿 뒤에 덧쓴 경우)."""
     if not REPORT_MD.exists():
-        return DEFAULT_MANUAL_BLOCK
+        return default
     text = REPORT_MD.read_text(encoding="utf-8")
-    # 블록이 여러 개면(기본 TBD 블록 뒤에 직접 작성한 블록을 붙인 경우 등) 기본 템플릿이 아닌 마지막 블록을 보존한다.
-    blocks = []
-    pos = 0
+    blocks, pos = [], 0
     while True:
-        s = text.find(MANUAL_START, pos)
+        s = text.find(start, pos)
         if s == -1:
             break
-        e = text.find(MANUAL_END, s)
+        e = text.find(end, s)
         if e == -1:
             break
-        blocks.append(text[s:e + len(MANUAL_END)])
-        pos = e + len(MANUAL_END)
+        blocks.append(text[s:e + len(end)])
+        pos = e + len(end)
     if not blocks:
-        return DEFAULT_MANUAL_BLOCK
-    edited = [b for b in blocks if b.strip() != DEFAULT_MANUAL_BLOCK.strip()]
+        return default
+    edited = [b for b in blocks if b.strip() != default.strip()]
     return edited[-1] if edited else blocks[-1]
+
+
+def extract_summary_block():
+    return _extract_block(SUMMARY_START, SUMMARY_END, DEFAULT_SUMMARY_BLOCK)
+
+
+def extract_manual_block():
+    return _extract_block(MANUAL_START, MANUAL_END, DEFAULT_MANUAL_BLOCK)
 
 
 def status_code_key(code):
@@ -1288,6 +1309,8 @@ def generate_report(spec: Spec):
     w(f"> 이 문서는 `measure_background_api.py report` 가 `data/*.csv` 만 읽어 자동 생성한다. "
       f"생성 시각: {utc_now_iso()}")
     w("> 측정하지 않은 값은 기재하지 않으며, 표본이 없거나 부족하면 `TBD` / `표본 부족` 으로 표시한다.")
+    w("")
+    w(extract_summary_block())
     w("")
     w("## 1. 측정 목적 및 환경")
     w("")
