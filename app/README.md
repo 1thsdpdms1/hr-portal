@@ -42,9 +42,9 @@ DB_URL=jdbc:mysql://localhost:3306/hr_portal?connectionTimeZone=UTC&forceConnect
 ## 배경 조회 동작
 
 화면에서 "배경 조회 요청"을 누르면 `QUEUED` 행만 만들고 바로 응답한다. **외부 API 호출은 화면 요청이 아니라 `@Scheduled` 워커가 한다.**
-실측에서 정상 GET도 최대 29.7초였고 순차 GET의 59.1%가 500·503·타임아웃이었기 때문이다(`../measurement/MEASUREMENTS.md` 2·8.1장).
+실측에서 정상 GET도 최대 29.7초였고 순차 GET의 59.1%가 500·503·타임아웃이었기 때문이다(`../measurement/MEASUREMENTS.md` 1·2-4).
 
-타이밍 값은 모두 MEASUREMENTS.md 11장의 결정값이며 `application.yml`의 `bgcheck` 한 곳에 있다
+타이밍 값은 모두 MEASUREMENTS.md 7~12장의 결정값이며 `application.yml`의 `bgcheck` 한 곳에 있다
 (GET 35초 · POST 5초 · 첫 폴링 35초 · 이후 20초 · 마감 180초 · 일시적 실패 연속 8회).
 
 - 인증키는 환경변수 `CANDIDATE_KEY`로만 받는다. 없으면 워커가 호출을 건너뛰고 경고만 남긴다.

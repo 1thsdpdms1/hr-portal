@@ -6,7 +6,7 @@ import java.time.Duration;
  * 외부 API 호출 1회의 결과(DESIGN.md 4.3, 6.4).
  *
  * <p>업무 결과({@code body})와 연동 결과(HTTP 상태·오류 종류)를 한 값에 담되 <b>섞지 않는다</b>.
- * 실측에서 순차 GET의 59.1%가 500·503·타임아웃이었다(MEASUREMENTS.md 8.1장, n=413).
+ * 실측에서 순차 GET의 59.1%가 500·503·타임아웃이었다(MEASUREMENTS.md 2-4, n=413).
  * 실패 응답이 결과 컬럼을 덮어쓰면 "조회 실패"가 "이상 있음"처럼 보이므로, 워커는 {@link #isSuccess()}일 때만
  * 결과를 반영한다.
  *
@@ -34,7 +34,7 @@ public record ApiResult<T>(int httpStatus, T body, String errorCode, Duration re
         return body != null && httpStatus >= 200 && httpStatus < 300;
     }
 
-    /** 다시 시도할 수 있는 실패인가(5xx·타임아웃·네트워크). 400/401/404는 반복해도 결과가 같다(11장). */
+    /** 다시 시도할 수 있는 실패인가(5xx·타임아웃·네트워크). 400/401/404는 반복해도 결과가 같다(12장). */
     public boolean isTransientFailure() {
         if (isSuccess()) {
             return false;

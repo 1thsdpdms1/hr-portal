@@ -15,7 +15,7 @@ import java.util.List;
  */
 public interface BackgroundCheckApi {
 
-    /** POST /background-checks. 타임아웃·오류가 나도 <b>자동으로 다시 보내지 않는다</b>(11장). */
+    /** POST /background-checks. 타임아웃·오류가 나도 <b>자동으로 다시 보내지 않는다</b>(7-2). */
     ApiResult<CreatedCheck> create(CreateRequest request, Duration timeout);
 
     /** GET /background-checks/{checkId} */

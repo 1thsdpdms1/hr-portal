@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 워커 검증용 가짜 외부 API(DESIGN.md 2.5.6).
  *
- * <p>실제 API는 같은 요청에도 200·500·503·타임아웃이 섞여 돌아온다(실측 8.1장). 그래서 "이번에는 이 응답"을
+ * <p>실제 API는 같은 요청에도 200·500·503·타임아웃이 섞여 돌아온다(실측 2-4). 그래서 "이번에는 이 응답"을
  * 미리 넣어 두고 순서대로 돌려준다. 호출 횟수도 세어 "재POST하지 않았는가", "요청 후 목록을 보지 않았는가"를 확인한다.
  */
 public class FakeBackgroundCheckApi implements BackgroundCheckApi {

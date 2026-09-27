@@ -53,9 +53,9 @@ Spring Security는 로그인에 성공하면 사용자 정보를 세션에 복�
 
 세 가지 실측 사실 때문입니다.
 
-1. **자동 실행은 반드시 실패하는 경우가 있습니다.** 시드 데이터의 EMP-007은 생년월일이 확인되지 않았고, 생년월일 없이 POST하면 400이었습니다(MEASUREMENTS.md 7.5장, n=2). 계정 생성에 묶어 두면 이 직원은 계정 자체를 만들 수 없게 됩니다.
-2. **외부 API 실패율이 높습니다.** 순차 GET 요청 중 **일시적 실패가 244/413(59.1%)**였습니다(MEASUREMENTS.md 8.1장, 내역 500×142·503×97·ReadTimeout×5). 계정 생성이 외부 API 성공에 묶이면 사내 업무가 외부 장애에 멈춥니다.
-3. **정상 응답도 느립니다.** HTTP 200 응답만 놓고도 **p95 26,636ms, 최대 29,776ms(n=203)** 였습니다(MEASUREMENTS.md 2.1장). 화면 요청 안에서 기다리면 관리자 화면이 멈춥니다.
+1. **자동 실행은 반드시 실패하는 경우가 있습니다.** 시드 데이터의 EMP-007은 생년월일이 확인되지 않았고, 생년월일 없이 POST하면 400이었습니다(MEASUREMENTS.md 6-8, n=2). 계정 생성에 묶어 두면 이 직원은 계정 자체를 만들 수 없게 됩니다.
+2. **외부 API 실패율이 높습니다.** 순차 GET 요청 중 **일시적 실패가 244/413(59.1%)**였습니다(MEASUREMENTS.md 2-4, 내역 500×142·503×97·ReadTimeout×5). 계정 생성이 외부 API 성공에 묶이면 사내 업무가 외부 장애에 멈춥니다.
+3. **정상 응답도 느립니다.** HTTP 200 응답만 놓고도 **p95 26,636ms, 최대 29,776ms(n=203)** 였습니다(MEASUREMENTS.md 1-1). 화면 요청 안에서 기다리면 관리자 화면이 멈춥니다.
 
 그래서 **계정 생성과 배경 조회를 분리하고, 화면 요청과 외부 호출도 분리**했습니다. 배경 조회는 채용·인사 판단이 필요한 시점에 사람이 정하는 일이지 계정을 만들 때마다 기계적으로 돌릴 일이 아니라고 봤습니다. 진행 중 1건 제한은 관리자의 중복 클릭으로 외부에 같은 요청이 여러 번 나가는 것을 막기 위해서이고, 최종 방어는 DB `UNIQUE(active_employee_id)`입니다.
 
@@ -75,7 +75,7 @@ Spring Security는 로그인에 성공하면 사용자 정보를 세션에 복�
 - `bgcheck/BackgroundCheckService.java#request()` — 사전 검증(퇴사자·생년월일 없음·성명 미분리·진행 중 건) 후 `QUEUED` INSERT만
 - `web/BackgroundCheckController.java` — 모든 경로가 `/admin/**`, 요청·재조회·상태 조회
 - `bgcheck/BackgroundCheckScheduler.java`, `BackgroundCheckWorker.java` — 외부 호출 담당
-- 타이밍 값은 `BgCheckProperties` 한 곳에서 읽고, 근거는 MEASUREMENTS.md 11장
+- 타이밍 값은 `BgCheckProperties` 한 곳에서 읽고, 근거는 MEASUREMENTS.md 7~12장
 - 테스트: `bgcheck/BackgroundCheckClaimTest.java`, `web/BackgroundCheckWebTest.java`
 
 ---

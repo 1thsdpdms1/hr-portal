@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>이 클래스는 외부 API를 부르지 않는다.</b> 요청은 {@code QUEUED} 행을 INSERT만 하고 바로 끝난다.
  * 실제 호출은 워커가 한다. 실측에서 정상 GET도 최대 29.7초, 순차 GET의 59.1%가 실패였기 때문에
- * 화면 요청 안에서 기다리면 관리자 화면이 멈춘다(MEASUREMENTS.md 2·8.1장).
+ * 화면 요청 안에서 기다리면 관리자 화면이 멈춘다(MEASUREMENTS.md 1·2-4).
  */
 @Service
 public class BackgroundCheckService {
@@ -42,7 +42,7 @@ public class BackgroundCheckService {
                 "퇴사한 직원은 배경 조회를 요청할 수 없습니다.");
         }
         if (employee.getBirthDate() == null) {
-            // 실측: 생년월일 없이 POST하면 400이었다(MEASUREMENTS.md 7.5장, n=2). 외부에 보내기 전에 막는다.
+            // 실측: 생년월일 없이 POST하면 400이었다(MEASUREMENTS.md 6-8, n=2). 외부에 보내기 전에 막는다.
             throw new BackgroundCheckRequestException(BackgroundCheckRequestException.Reason.BIRTH_DATE_UNKNOWN,
                 "생년월일 확인 후 요청할 수 있습니다.");
         }

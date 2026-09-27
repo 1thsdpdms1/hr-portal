@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * 외부 API 호출을 맡는 예약 작업(DESIGN.md 2.5, 6.4).
  *
  * <p>화면 요청은 {@code QUEUED} 행을 INSERT만 하고 바로 응답한다. 실제 호출은 여기서 한다.
- * 실측에서 정상 GET도 최대 29.7초가 걸렸고 순차 GET의 59.1%가 실패였다(MEASUREMENTS.md 2·8.1장).
+ * 실측에서 정상 GET도 최대 29.7초가 걸렸고 순차 GET의 59.1%가 실패였다(MEASUREMENTS.md 1·2-4).
  * 그런 호출을 화면 요청 안에서 기다리면 관리자 화면이 멈춘다.
  *
  * <p>한 번의 {@link #tick()}에서 한 행은 <b>한 단계</b>만 진행한다: 선점 → 외부 호출 1회 → token 조건 기록.
@@ -189,7 +189,7 @@ public class BackgroundCheckWorker {
 
     private void linkCreated(long id, BackgroundCheckApi.CreatedCheck created) {
         // POST 응답에는 상세 항목이 없다(실측: responseFields). clear/flagged여도 상세 GET을 한 번 더 보낸다.
-        // pending이면 11장대로 35초 뒤 첫 폴링, 즉시 최종이면 지금 바로 상세 GET(0초 뒤).
+        // pending이면 10장대로 35초 뒤 첫 폴링, 즉시 최종이면 지금 바로 상세 GET(0초 뒤).
         long delay = created.status() == ResultStatus.PENDING ? properties.firstPollDelay().toSeconds() : 0;
         store.linkCheckId(id, created.checkId(), created.status(), created.createdAt(), delay);
     }
@@ -223,7 +223,7 @@ public class BackgroundCheckWorker {
             return true;
         }
         if (result.httpStatus() == 401 || result.httpStatus() == 404) {
-            // 반복해도 결과가 같다(11장 비재시도 코드).
+            // 반복해도 결과가 같다(12장 비재시도 코드).
             store.markUnresolved(check.id(), token, result.errorCodeOrHttp());
             return true;
         }
@@ -255,7 +255,7 @@ public class BackgroundCheckWorker {
     }
 
     /**
-     * 일시적 실패 처리. 연속 실패가 11장 상한(8회)에 닿으면 '결과 미확인'으로 중단한다.
+     * 일시적 실패 처리. 연속 실패가 8장 상한(8회)에 닿으면 '결과 미확인'으로 중단한다.
      * 다음 시도 시각은 Retry-After(헤더 → body) → 없으면 폴링 간격이다.
      */
     private void failOrGiveUp(BackgroundCheckJob check, String token, String errorCode, Duration retryAfter) {
@@ -270,7 +270,7 @@ public class BackgroundCheckWorker {
     }
 
     /**
-     * GET 타임아웃 = min(11장 35초, 마감까지 남은 시간). 마감을 넘겨 기다리지 않는다.
+     * GET 타임아웃 = min(7-1 의 35초, 마감까지 남은 시간). 마감을 넘겨 기다리지 않는다.
      * 남은 시간은 DB가 계산한 값을 쓴다(자바 시계와 DB 시계를 섞지 않는다).
      */
     private Duration getTimeoutWithin(BackgroundCheckJob check) {

@@ -75,7 +75,7 @@ class BackgroundCheckWorkerTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void POST가_pending이면_11장대로_35초_뒤_첫_폴링을_예약한다() {
+    void POST가_pending이면_10장대로_35초_뒤_첫_폴링을_예약한다() {
         long id = 요청을_넣는다();
         api.listReturns(FakeBackgroundCheckApi.list("CHK-old"))
             .createReturns(FakeBackgroundCheckApi.created("CHK-1", ResultStatus.PENDING));

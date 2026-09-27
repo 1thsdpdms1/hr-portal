@@ -291,7 +291,7 @@ public class BackgroundCheckStore {
             .executeUpdate();
     }
 
-    /** 아직 pending. 11장대로 실패로 세지 않고 연속 실패 수를 0으로 되돌린다. */
+    /** 아직 pending. 8장대로 실패로 세지 않고 연속 실패 수를 0으로 되돌린다. */
     @Transactional
     public int applyPending(long id, String token, long nextRunDelaySeconds) {
         return em.createNativeQuery("""

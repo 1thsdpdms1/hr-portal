@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
  * 외부 API 클라이언트가 실제 HTTP 응답을 어떻게 해석하는지 확인한다.
  *
  * <p>실제 외부 API를 부르지 않는다. 같은 PC에 작은 HTTP 서버를 띄워, 실측에서 관찰한 응답 모양
- * (MEASUREMENTS.md 8.0장의 503 두 종류, 500, 201, 200 상세 등)을 그대로 돌려주게 한다.
+ * (MEASUREMENTS.md 2-3 의 503 두 종류, 500, 201, 200 상세 등)을 그대로 돌려주게 한다.
  * 측정에서 얻은 사실을 코드가 제대로 다루는지 보는 것이 목적이다.
  */
 class HttpBackgroundCheckApiTest {
@@ -160,7 +160,7 @@ class HttpBackgroundCheckApiTest {
 
     @Test
     void 약_30초형_503은_대기_시간_정보가_없다() {
-        // 실측: {"message":"Service Unavailable"}만 오는 종류 44건, Retry-After 0/44 — MEASUREMENTS.md 8.0장
+        // 실측: {"message":"Service Unavailable"}만 오는 종류 44건, Retry-After 0/44 — MEASUREMENTS.md 2-3
         reply(503, """
             {"message":"Service Unavailable"}""");
 

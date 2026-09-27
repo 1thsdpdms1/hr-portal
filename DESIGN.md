@@ -2,10 +2,10 @@
 
 > 이 문서는 구현 전에 검토하기 위한 설계안이다. 아직 앱 코드, DB 테이블, 마이그레이션 파일은 없다. 이 문서의 SQL과 Java 코드 조각은 설계 설명용이다.
 > 표시 규칙: **[확인]** 저장소나 이 PC에서 직접 확인한 사실 · **[실측]** `measurement/MEASUREMENTS.md`에 적힌 수치(n 포함) · **[제안]** 이 문서의 설계 판단 · **[미정]** 아직 모르거나 나중에 정할 것 · **[과거 설계]** 지금은 쓰지 않는 이전 안을 설명하는 문맥
-> 설계 선택마다 붙은 "← 요구사항"은 과제 설명서(`InterviewTasks.txt`)나 MEASUREMENTS.md 11장의 어느 요구 때문에 그 선택이 필요한지를 적은 것이다.
+> 설계 선택마다 붙은 "← 요구사항"은 과제 설명서(`InterviewTasks.txt`)나 MEASUREMENTS.md 7~12장의 어느 요구 때문에 그 선택이 필요한지를 적은 것이다.
 
 > **변경 요약 (3차 개정: Java + Spring Boot + Spring Security + MySQL 전환)**
-> 앱 기술을 지원자가 익숙한 **Java 17 + Spring Boot + Spring Security + MySQL 8.0**과 **IntelliJ IDEA**로 바꿨다. Python 측정 도구, CSV, MEASUREMENTS.md의 실측 수치와 11장 정책값, 시드 직원 10명은 그대로 둔다. 기술 이름만 바꾸지 않고, 선택한 기술에서 실제로 동작하도록 다음 설계를 고쳤다.
+> 앱 기술을 지원자가 익숙한 **Java 17 + Spring Boot + Spring Security + MySQL 8.0**과 **IntelliJ IDEA**로 바꿨다. Python 측정 도구, CSV, MEASUREMENTS.md의 실측 수치와 7~12장 정책값, 시드 직원 10명은 그대로 둔다. 기술 이름만 바꾸지 않고, 선택한 기술에서 실제로 동작하도록 다음 설계를 고쳤다.
 > 1. **퇴사자 세션 차단**: Spring Security는 로그인 후 세션에 저장한 사용자 정보를 요청마다 DB에서 다시 읽지 않는다. 그래서 요청마다 계정 상태를 DB에서 확인하는 필터 1개를 추가했다(2.4, 5.1, 6.1).
 > 2. **진행 중 1건 제한**: MySQL에는 조건부(부분) UNIQUE 인덱스가 없다. 그래서 "진행 중일 때만 직원 ID를 담는 생성 칼럼 + UNIQUE"로 바꿨다(4.3).
 > 3. **MySQL 자료형 규칙**: 시간대가 있는 시각 타입이 없어 `DATETIME(6)` + "항상 UTC" 규칙을 두었다. DB 시계는 `UTC_TIMESTAMP(6)`만 쓴다. `JSONB` → `JSON`, `UUID` → `VARCHAR(36)`으로 바꿨다. 문자열 연결은 `CONCAT()`을 쓴다(MySQL에서 `||`는 OR다). 이름 비교는 `utf8mb4_bin`으로 한다(4장).
@@ -14,7 +14,7 @@
 > 6. **IntelliJ Community + 로컬 MySQL** 실행 방법과 구현 전 위험 목록을 부록 A·B로 추가했다.
 >
 > **[과거 설계] 이전 개정 이력**(Python/Django + PostgreSQL 전제)
-> - 1차: 실측 수치 갱신, `SUBMIT_UNKNOWN`·`UNRESOLVED` 상태 도입, 8.3장을 11장 결정값 표로 교체
+> - 1차: 실측 수치 갱신, `SUBMIT_UNKNOWN`·`UNRESOLVED` 상태 도입, 8.3장을 MEASUREMENTS.md 결정값 표로 교체
 > - 2차: "조회 1건당 스레드 + 임대 컬럼"을 버리고 "DB 행 + 짧은 단계 + 루프 1개 + 조건부 UPDATE 선점"으로 교체. 요청 전후 목록 비교 규칙을 도입하고, 상세 GET과 pending 폴링을 구분
 > - 2차에서 정한 **동작 규칙(상태, 전후 비교, 상세 GET 해석)은 그대로 유지**하고, 이번에는 구현 수단만 Java/MySQL에 맞게 바꿨다.
 
@@ -34,7 +34,7 @@
 | 앱 기술 [확인] | 지원자가 **Java + Spring Boot + Spring Security + MySQL, IntelliJ IDEA**로 정했다. |
 | 이 PC의 개발 도구 [확인] | JDK **Temurin 17.0.16**(`java -version`), **MySQL Community Server 8.0.39**(서비스 이름 `MySQL`, 실행 중. `mysql.exe`는 `C:\Program Files\MySQL\MySQL Server 8.0\bin`에 있고 PATH에는 없음), **MySQL Workbench 8.0**, **IntelliJ IDEA Community Edition 2024.1.4**. Docker는 없다. `~/.gradle`, `~/.m2` 캐시가 있다. |
 | 인증키 취급 [확인] | 측정 도구는 `CANDIDATE_KEY` 환경변수로만 키를 받는다. `.gitignore`가 `.env`와 `*.key`를 제외한다. 앱도 같은 원칙을 따른다. |
-| MEASUREMENTS.md [확인] | 2026-09-22T15:42Z 생성본으로, 자동 측정 HTTP 요청 549건과 lifecycle 31건을 담고 있다. **11장(최종 결정)은 지원자가 기입했다.** 이 문서는 그 값을 인용만 하고 새 값을 만들지 않는다(8.3절). |
+| MEASUREMENTS.md [확인] | 2026-09-22T15:42Z 생성본으로, 자동 측정 HTTP 요청 549건과 lifecycle 31건을 담고 있다. **7~12장(최종 결정)은 지원자가 기입했다.** 이 문서는 그 값을 인용만 하고 새 값을 만들지 않는다(8.3절). |
 | 측정 도구의 이름 분리 [확인] | `split_korean_name`은 복성 목록(남궁·황보·선우·제갈 등 8개)에 있으면 앞 두 글자를, 아니면 첫 글자를 성으로 자른다. 이 규칙으로는 선우진이 항상 `선우/진`이 된다. 앱은 같은 규칙을 **초깃값 제안**으로만 쓰고, 결과는 데이터로 저장한다(7장). |
 
 ### 1.2 실측 결과 중 데이터 구조에 영향을 주는 사실
@@ -46,14 +46,14 @@
 | `dateOfBirth` 누락과 빈 문자열 모두 **400** (`Missing required field: dateOfBirth`, 각 n=1, 7.5절) | EMP-007은 외부 API에 보낼 수 없다. 서버가 요청 전에 막고 "생년월일 미확인" 상태로 보여 줘야 한다. |
 | 같은 employeeId로 POST 5회 → **서로 다른 checkId 5개** (n=5, 4장) | 외부 API가 중복을 막아 주지 않는다. 우리 DB가 "진행 중인 조회"를 한 건으로 제한하고, POST는 자동으로 재시도하지 않는다. |
 | 순차 GET의 **59.1%가 일시적 실패**(500 142건, 503 97건, 타임아웃 5건 / 413건, 8.1절) | "조회 실패"와 "업무 결과(pending/clear/flagged)"를 **별도 컬럼**으로 둔다. 실패한 GET이 결과를 덮어쓰면 안 된다. |
-| HTTP 200 GET 지연 p95 26,636ms, max 29,776ms (n=203, 2장). 약 30초 걸리는 503 44건(8.0장) | 화면 요청 안에서 외부 결과를 기다리지 않는다. 외부 호출은 서버의 예약 작업(`@Scheduled` 워커)이 하고, 화면은 DB에 저장된 상태만 읽는다(2.5, 6.4). |
+| HTTP 200 GET 지연 p95 26,636ms, max 29,776ms (n=203, 1장). 약 30초 걸리는 503 44건(2-3) | 화면 요청 안에서 외부 결과를 기다리지 않는다. 외부 호출은 서버의 예약 작업(`@Scheduled` 워커)이 하고, 화면은 DB에 저장된 상태만 읽는다(2.5, 6.4). |
 | POST 201 응답 필드는 `checkId, createdAt, employeeId, message, status`뿐 (`measurements.csv` responseFields) | POST에서 즉시 `clear`를 받아도 상세 결과(범죄기록 등)는 **상세 GET**으로 한 번 더 가져와야 한다. 이 GET은 pending을 기다리는 폴링과 다르다(6.4). |
-| 정상 입력 POST **36건 모두 201**, 지연 max 1,895ms (n=36, 2.2·3.2장). 400 4건은 오류 케이스 시험에서 일부러 보낸 요청이다(7.5장). POST 5xx·시간 초과는 관측되지 않음 | POST 시간 초과는 드물게 일어날 예외 경로다. 요청 전 목록 조회에 실패해도 POST를 막지 않는다(4.3). |
+| 정상 입력 POST **36건 모두 201**, 지연 max 1,895ms (n=36, 1-2·2-2). 400 4건은 오류 케이스 시험에서 일부러 보낸 요청이다(6-8). POST 5xx·시간 초과는 관측되지 않음 | POST 시간 초과는 드물게 일어날 예외 경로다. 요청 전 목록 조회에 실패해도 POST를 막지 않는다(4.3). |
 | `estimatedCompletionSeconds` **관찰 0 / 36** (7.3절) | 이 필드에 의존하는 컬럼이나 로직을 만들지 않는다. |
-| 503의 `Retry-After` **헤더 0 / 116**, body `retryAfter` 72 / 116 (8장) | 다음 처리 가능 시각(`next_run_at`)을 저장할 컬럼이 필요하다. 11장 규칙대로 헤더 → body → 기본 간격 순으로 읽는다. |
-| GET 목록(`?employeeId=`)은 자동 측정 9건 중 **200이 1건**(나머지 400·500·503·타임아웃, 7.1절). 11장은 이를 "7회 중 1회만 200(표본 적음)"으로 정리했다 | 조회 이력은 외부 목록 API가 아니라 **우리 DB 기록**으로 보여 준다. 목록 API는 POST 결과가 불확실할 때 **요청 전후 목록을 비교하는 보조 수단**으로만 쓴다. 실패하면 추측하지 않고 "확인 필요"로 남긴다(4.3). |
+| 503의 `Retry-After` **헤더 0 / 116**, body `retryAfter` 72 / 116 (2-3) | 다음 처리 가능 시각(`next_run_at`)을 저장할 컬럼이 필요하다. 9장 규칙대로 헤더 → body → 기본 간격 순으로 읽는다. |
+| GET 목록(`?employeeId=`)은 자동 측정 9건 중 **200이 1건**(나머지 400·500·503·타임아웃, 6-4). 7-2 는 이를 "7회 중 1회만 200(표본 적음)"으로 정리했다 | 조회 이력은 외부 목록 API가 아니라 **우리 DB 기록**으로 보여 준다. 목록 API는 POST 결과가 불확실할 때 **요청 전후 목록을 비교하는 보조 수단**으로만 쓴다. 실패하면 추측하지 않고 "확인 필요"로 남긴다(4.3). |
 | 4장: 같은 사번으로 POST한 5건이 **모두 나중에 목록에 나타났다**. 다만 요청 전(before) 목록 조회를 하지 못해 **전후 비교 자체는 측정하지 못했다(TBD)** | 요청 전후 비교가 동작하는 근거는 "POST로 만든 기록이 목록에 나타난다"까지다. 비교 방식 자체는 구현 후 처음 확인하게 된다(4.3). |
-| 동시성 5: 5xx·예외 10 / 20(50.0%), 동시성 10: 15 / 20(75.0%), 기준선 순차 GET 244 / 413(59.1%) (6장, 9장 표) | 워커가 한 번에 동시에 보내는 외부 호출 수 상한의 [제안] 근거(2.5). |
+| 동시성 5: 5xx·예외 10 / 20(50.0%), 동시성 10: 15 / 20(75.0%), 기준선 순차 GET 244 / 413(59.1%) (5장) | 워커가 한 번에 동시에 보내는 외부 호출 수 상한의 [제안] 근거(2.5). |
 | 명세에 없는 필드 `processingMs`, `tenant`, `tenantEmployee` (203/203, 7.2절) | 의미를 모르는 필드는 저장하지 않는다(민감정보 최소 보관). |
 | 측정 스크립트가 **EMP-001로 실제 POST를 6건** 보냈다(duplicate 5건, 수동 M-1 1건) | 외부 API에 EMP-001 기록이 이미 있다. 앱이 외부 목록을 이력으로 쓰면 측정용 요청이 섞여 나온다. 이것도 DB 기록을 이력으로 쓰는 근거다. |
 | API 서버 `createdAt`이 측정 PC 시계보다 6.5~7.6초 이르다 (n=36, 5장) | 우리 시각(`requested_at`)과 외부 시각(`external_created_at`, `completed_at`)을 다른 컬럼에 두고, 서로 빼서 계산하지 않는다. 서버마다 시계가 다를 수 있으므로 일정 계산은 **DB 시계 하나**(`UTC_TIMESTAMP(6)`)로 한다(2.5). |
@@ -69,7 +69,7 @@
 | `flagged` 결과 | 완료 31건이 모두 `clear`였다(5장). `flagged` 화면은 실제 응답으로 확인하지 못한 상태에서 구현한다. |
 | 복성 3명의 성/이름 경계 | 남궁서준·황보라온은 복성으로 보는 해석이 자연스럽다. 그러나 **선우진은 "선우+진"과 "선+우진" 모두 가능하다.** 과제는 질문해도 감점하지 않는다고 했으므로 회사에 문의할 것을 권한다(7장). |
 | 관리자는 누구인가 | 시드 10명 중 관리자는 지정되어 있지 않다. 이 설계는 관리자 계정을 직원 레코드와 연결하지 않는다(4.2절). |
-| 11장에 없는 운영 값 | ① 워커 tick 주기 ② 선점 시간의 여유(외부 호출 타임아웃에 더하는 값) ③ 한 tick의 동시 외부 호출 상한([제안] 5, 6장 근거) ④ 목록 GET 타임아웃([제안] 11장 GET 타임아웃 35초를 그대로 사용). 구현할 때 근거와 함께 `application.yml`의 `bgcheck` 설정에 적는다(8.3절). |
+| 7~12장에 없는 운영 값 | ① 워커 tick 주기 ② 선점 시간의 여유(외부 호출 타임아웃에 더하는 값) ③ 한 tick의 동시 외부 호출 상한([제안] 5, 5장 근거) ④ 목록 GET 타임아웃([제안] 7-1 의 GET 타임아웃 35초를 그대로 사용). 구현할 때 근거와 함께 `application.yml`의 `bgcheck` 설정에 적는다(8.3절). |
 | 요청 전후 목록 비교가 실제로 동작하는지 | 4장에서 전후 비교를 측정하지 못했다. 구현 후 가짜 API 클라이언트 테스트로 규칙을 확인하고, 실제 API로는 첫 연동 때 확인한다. |
 | 개발용 MySQL root 비밀번호 | MySQL 서비스는 실행 중이지만 root 비밀번호는 이 문서에서 확인하지 않았다. 개발용 DB와 전용 사용자를 만들 때 필요하다(부록 A). |
 
@@ -92,7 +92,7 @@
 
 - **프런트엔드 프로젝트를 따로 두지 않는다.** Thymeleaf로 서버에서 HTML을 만들고, Background Check 상태를 새로 고치는 작은 `fetch` 코드만 둔다. React 같은 별도 앱을 두면 빌드와 배포 대상이 둘이 되고, CSRF와 세션 처리도 따로 맞춰야 한다.
 - **Background Check는 "작업은 DB 행, 실행은 짧은 단계, 워커는 앱당 1개"로 처리한다.** 별도 워커 프로세스, 메시지 큐, Redis, Quartz는 두지 않는다(2.5).
-  ← 요구사항: MEASUREMENTS.md 11장 머리말 "재시도·폴링은 서버에서 비동기로 처리하고, 화면 요청 하나가 완료될 때까지 계속 기다리게 하지 않는다".
+  ← 요구사항: MEASUREMENTS.md 7장 머리말 "재시도·폴링은 서버에서 비동기로 처리하고, 화면 요청 하나가 완료될 때까지 계속 기다리게 하지 않는다".
 - **관리 콘솔류를 켜지 않는다.** Spring Boot Actuator, H2 콘솔 같은 도구는 넣지 않는다. 관리자 화면은 직접 만든 몇 개 페이지로 한정한다. 모든 데이터를 보여 주는 도구가 열려 있으면 "민감정보는 권한에 맞게" 요구를 통제하기 어렵다.
 
 ### 2.2 기술 스택과 의존성 (최소 구성) [제안]
@@ -199,8 +199,8 @@ DB는 지원자가 MySQL로 정했으므로 후보 비교는 하지 않는다. �
   3. 이번 묶음이 모두 끝날 때까지 기다린다. "한 tick에 최대 5건, 다 끝나면 다음 tick"이라 동작을 설명하기 쉽다.
   4. 마감이 지난 행을 `UNRESOLVED`로 바꾼다(6.4).
 - **기억할 상태는 모두 DB 행에 있고 자바 메모리에는 없다.** 그래서 재시작해도 작업이 사라지지 않는다.
-- tick 주기와 스레드 풀 크기는 [미정]/[제안]이다(8.3). tick 주기가 길면 실제 호출이 그만큼 늦어지므로 11장의 20초 간격보다 충분히 짧게 둔다.
-- 외부 API 호출은 Java 표준 `HttpClient`로 한다. `HttpRequest.newBuilder().timeout(...)`에 11장 타임아웃을 넣는다(GET 35초, POST 5초). 이 타임아웃이 응답 본문을 다 읽을 때까지 적용되는지는 구현할 때 테스트로 확인한다(부록 B). 초과하더라도 아래 token 조건이 늦은 쓰기를 막는다.
+- tick 주기와 스레드 풀 크기는 [미정]/[제안]이다(8.3). tick 주기가 길면 실제 호출이 그만큼 늦어지므로 9장의 20초 간격보다 충분히 짧게 둔다.
+- 외부 API 호출은 Java 표준 `HttpClient`로 한다. `HttpRequest.newBuilder().timeout(...)`에 7장 타임아웃을 넣는다(GET 35초, POST 5초). 이 타임아웃이 응답 본문을 다 읽을 때까지 적용되는지는 구현할 때 테스트로 확인한다(부록 B). 초과하더라도 아래 token 조건이 늦은 쓰기를 막는다.
 
 #### 2.5.3 트랜잭션 규칙 (Spring 초보자가 가장 실수하기 쉬운 곳)
 
@@ -231,7 +231,7 @@ UPDATE background_check
  WHERE id = :id AND claim_token = :myToken;
 ```
 
-- **선점 시간**(`leaseMicros`) = 이번 외부 호출의 타임아웃(11장) + 여유([미정]). 한 단계에서 외부 호출을 여러 번 하면(요청 전 목록 → POST → 요청 후 목록) **호출 전마다** `claim_token` 조건으로 선점을 연장한다.
+- **선점 시간**(`leaseMicros`) = 이번 외부 호출의 타임아웃(7장) + 여유([미정]). 한 단계에서 외부 호출을 여러 번 하면(요청 전 목록 → POST → 요청 후 목록) **호출 전마다** `claim_token` 조건으로 선점을 연장한다.
 - **다음 일정도 "지금부터 몇 초 뒤"로만 DB에 넘긴다.** Java가 절대 시각을 계산해 넣지 않고 `UTC_TIMESTAMP(6)`에 더한다. 서버가 여러 대이고 시계가 서로 달라도 기준 시계는 DB 하나다.
 - **예외 1개**: 우리 POST 응답(201)으로 받은 checkId는 token이 바뀌었어도 버리지 않는다. 쓰기 조건은 `check_id IS NULL AND sync_state IN ('SUBMITTING','SUBMIT_UNKNOWN')`이다. 우리 서버가 직접 받은 사실이라 추측이 아니다. 버리면 외부에 만든 기록을 잃는다.
 - **왜 두 서버가 동시에 가져갈 수 없나(InnoDB)**: 첫 번째 UPDATE가 그 행에 쓰기 잠금을 건다. 두 번째 UPDATE는 잠금이 풀릴 때까지 기다린다. 풀린 뒤에는 **최신 커밋 값**을 다시 읽고 WHERE를 검사한다(기본 격리 수준 REPEATABLE READ에서도 UPDATE는 이렇게 동작한다). `next_run_at`이 이미 미래로 옮겨졌으므로 조건이 거짓 → 0행이다. 트랜잭션은 UPDATE 한 문장 길이라 잠금도 아주 짧다.
@@ -466,10 +466,10 @@ Java 구현: 직원 본인용 폼은 `phone`, `email` 두 필드만 가진 별�
 | `completed_at` | DATETIME(6) | Y | NULL | — | 외부 응답의 `completedAt`(외부 서버 시각). 처리시간은 `completed_at - external_created_at`으로만 계산한다(시계 차이 실측 6.5~7.6초). |
 | `last_polled_at` | DATETIME(6) | Y | NULL | — | 마지막 GET 시도 시각. |
 | `poll_count` | INT | N | 0 | CHECK `>= 0` | GET 시도 횟수. 화면 표시와 면접 설명용이다. 중단 판단은 아래 컬럼들로 한다. |
-| `consecutive_failures` | INT | N | 0 | CHECK `>= 0` | GET 일시적 실패(500·503·시간 초과)의 **연속** 횟수. 200을 받으면(pending 포함) 0으로 되돌린다. 11장: 연속 8회면 중단한다. |
+| `consecutive_failures` | INT | N | 0 | CHECK `>= 0` | GET 일시적 실패(500·503·시간 초과)의 **연속** 횟수. 200을 받으면(pending 포함) 0으로 되돌린다. 8장: 연속 8회면 중단한다. |
 | `last_error_code` | VARCHAR(20) | Y | NULL | — | 마지막 실패 종류: `HTTP_500`, `HTTP_503`, `TIMEOUT`, `NETWORK`, `HTTP_400`, `HTTP_401`, `HTTP_404`, `UNKNOWN` 등. **업무 결과가 아니다.** |
 | `last_error_at` | DATETIME(6) | Y | NULL | — | |
-| `next_run_at` | DATETIME(6) | Y | `(UTC_TIMESTAMP(6))` | — | **다음 처리 가능 시각.** 이 시각 전에는 어느 서버도 이 행을 처리하지 않는다. 뜻은 하나지만 두 가지로 쓰인다. ① 일정: pending이면 POST 후 35초, 이후 20초이며, 503의 Retry-After(헤더 → body 순)가 더 길면 그 값을 쓴다(11장). ② 선점: 작업자가 가져가면 "외부 호출 타임아웃 + 여유"만큼 미래로 옮긴다(2.5.4). 더 할 일이 없는 상태(`DONE` 등)에서는 NULL이다. 값은 항상 `UTC_TIMESTAMP(6)` 기준으로 DB가 계산한다. |
+| `next_run_at` | DATETIME(6) | Y | `(UTC_TIMESTAMP(6))` | — | **다음 처리 가능 시각.** 이 시각 전에는 어느 서버도 이 행을 처리하지 않는다. 뜻은 하나지만 두 가지로 쓰인다. ① 일정: pending이면 POST 후 35초, 이후 20초이며, 503의 Retry-After(헤더 → body 순)가 더 길면 그 값을 쓴다(9장). ② 선점: 작업자가 가져가면 "외부 호출 타임아웃 + 여유"만큼 미래로 옮긴다(2.5.4). 더 할 일이 없는 상태(`DONE` 등)에서는 NULL이다. 값은 항상 `UTC_TIMESTAMP(6)` 기준으로 DB가 계산한다. |
 | `claim_token` | VARCHAR(36) | Y | NULL | — | 지금 이 단계를 맡은 작업자 표시(`UUID.randomUUID().toString()`). 결과를 쓸 때 이 값이 같아야 한다(2.5.4). 단계가 끝나면 NULL로 둔다. |
 | `post_sent_at` | DATETIME(6) | Y | NULL | — | POST를 보내기 **직전에 커밋한** 시각. 이 값이 있으면 "POST를 보냈을 수 있다"는 뜻이라 이후 어떤 경로로도 재POST하지 않는다. 180초 마감의 기준이다. |
 | `pre_list_check_ids` | JSON | Y | NULL | — | POST 직전 목록 조회로 받은 checkId 배열. **SQL NULL = 요청 전 목록 조회 실패**(비교 기준 없음), `[]` = 조회 성공, 기록 없음. checkId 외의 필드는 저장하지 않는다. Java에서는 `List<String>` 필드에 `@JdbcTypeCode(SqlTypes.JSON)`으로 매핑한다. 필드가 `null`이면 SQL NULL이 저장되는지 테스트로 확인한다(JSON의 `null` 값과 구분해야 한다). |
@@ -480,7 +480,7 @@ Java 구현: 직원 본인용 폼은 `phone`, `email` 두 필드만 가진 별�
 
 **`sync_state` 상태표 (CHECK ④: 아래 7개 값만 허용)**
 
-← 요구사항: MEASUREMENTS.md 11장의 POST 타임아웃 결정("자동으로 다시 보내지 않고, 요청 전후 목록 차이로 checkId 생성 여부를 확인. 확인할 수 없으면 '확인 필요'")과 폴링 중단 조건("180초가 지나면 '결과 미확인'으로 기록하고 checkId를 보존").
+← 요구사항: MEASUREMENTS.md 7-2 의 POST 타임아웃 결정("자동으로 다시 보내지 않고, 요청 전후 목록 차이로 checkId 생성 여부를 확인. 확인할 수 없으면 '확인 필요'")과 폴링 중단 조건("180초가 지나면 '결과 미확인'으로 기록하고 checkId를 보존").
 - "안 만들어졌다"와 "만들어졌는지 모른다"를 같은 상태로 두면, 모르는 상태에서 새 POST를 보내 외부에 중복 기록을 만들 수 있다.
 - `QUEUED`와 `SUBMITTING`을 나누는 이유도 같다. 두 상태의 차이는 "POST를 보냈을 가능성이 있는가"이고, 재시작 뒤 다시 해도 되는지가 여기서 갈린다.
 
@@ -502,7 +502,7 @@ Java 쪽은 `enum SyncState { QUEUED, SUBMITTING, SUBMIT_FAILED, SUBMIT_UNKNOWN,
 |---|---|---|
 | 201 | 하지 않는다. 우리가 받은 checkId를 그대로 쓴다 | `IN_PROGRESS`(`result_status`는 응답값) |
 | 400 / 401 | 하지 않는다 | `SUBMIT_FAILED` |
-| 시간 초과(11장 5초, Java `HttpTimeoutException`) · 네트워크 오류(`IOException`) · 그 밖의 응답 · 작업자 중단 | 아래 규칙대로 **요청 후 목록 1회** | 새 후보가 정확히 1개 → `IN_PROGRESS`, 그 외 → `SUBMIT_UNKNOWN` |
+| 시간 초과(7-2 의 5초, Java `HttpTimeoutException`) · 네트워크 오류(`IOException`) · 그 밖의 응답 · 작업자 중단 | 아래 규칙대로 **요청 후 목록 1회** | 새 후보가 정확히 1개 → `IN_PROGRESS`, 그 외 → `SUBMIT_UNKNOWN` |
 
 어느 경우에도 **POST를 자동으로 다시 보내지 않는다.** ← 실측: 같은 employeeId로 POST하면 매번 새 checkId가 생긴다(4장, n=5). 연결 단계에서 실패한 오류(`ConnectException`)는 요청이 서버에 닿지 않았을 가능성이 높다. 하지만 Java 예외 종류만으로 "안 보냈다"를 확실히 가르기 어려워 이것도 `SUBMIT_UNKNOWN` 경로로 보낸다. 추측하지 않는다는 원칙을 우선한다.
 
@@ -520,7 +520,7 @@ Java 쪽은 `enum SyncState { QUEUED, SUBMITTING, SUBMIT_FAILED, SUBMIT_UNKNOWN,
 - `pre_list_check_ids = NULL`로 두고 **POST는 그대로 보낸다.** 요청 전 목록 조회는 재시도하지 않는다.
 - POST가 201이면 비교가 필요 없으므로 아무 문제가 없다.
 - POST 결과가 불확실하면 **비교 기준이 없으므로** 요청 후 목록을 조회하지 않고 바로 `SUBMIT_UNKNOWN`이 된다. 화면 문구는 "요청 전 목록이 없어 생성 여부를 확인할 수 없음"이고, 관리자에게는 "다시 조회" 대신 "생성 안 됨으로 종료"만 보여 준다.
-- **왜 POST를 막지 않나**: 정상 입력 POST는 36건 모두 201이었고(오류 시험용 400 4건 제외) 최대 1,895ms라 5초 타임아웃에 걸린 적이 없다(2.2장, n=36). 반면 목록 GET의 200은 드물었다(11장 "7회 중 1회", 표본 적음). 요청 전 목록을 필수로 하면 대부분의 조회를 아예 보낼 수 없게 된다. 요청 전 목록은 드물게 필요한 **보험**이다.
+- **왜 POST를 막지 않나**: 정상 입력 POST는 36건 모두 201이었고(오류 시험용 400 4건 제외) 최대 1,895ms라 5초 타임아웃에 걸린 적이 없다(1-2, n=36). 반면 목록 GET의 200은 드물었다(7-2 "7회 중 1회", 표본 적음). 요청 전 목록을 필수로 하면 대부분의 조회를 아예 보낼 수 없게 된다. 요청 전 목록은 드물게 필요한 **보험**이다.
 
 **이 규칙의 한계**
 - 같은 키로 같은 사번에 대해 다른 곳(예: 측정 스크립트)이 그 사이에 POST하면 새 후보가 2개가 되어 `SUBMIT_UNKNOWN`이 된다. 추측하지 않으므로 잘못 연결하지는 않고, 안전한 쪽으로 실패한다. 앱을 쓰는 동안 시드 사번으로 측정 스크립트를 돌리지 않는다.
@@ -726,21 +726,21 @@ sequenceDiagram
     end
 ```
 
-**상세 GET과 pending 폴링의 구분** ← 요구사항: MEASUREMENTS.md 11장 폴링 주기("POST가 즉시 clear/flagged이면 pending 폴링은 하지 않는다")와, POST 201 응답에 상세 항목이 없다는 실측(`measurements.csv` responseFields)을 함께 지키기 위해서다.
+**상세 GET과 pending 폴링의 구분** ← 요구사항: MEASUREMENTS.md 10장 폴링 주기("POST가 즉시 clear/flagged이면 pending 폴링은 하지 않는다")와, POST 201 응답에 상세 항목이 없다는 실측(`measurements.csv` responseFields)을 함께 지키기 위해서다.
 
 | 구분 | 언제 | 목적 | 첫 GET | 끝나는 조건 | 실패할 때 |
 |---|---|---|---|---|---|
-| **상세 GET** | POST 201이 즉시 `clear`/`flagged` | POST 응답에 없는 상세 항목(`criminalRecord`, `educationVerified`, `employmentVerified`, `creditScore`)을 받기 | **즉시**(`next_run_at` = 현재 DB 시각) | 상세가 포함된 200 응답 **1회**를 받으면 `DONE`. 상태가 바뀌기를 기다리는 반복 조회는 하지 않는다 | 500·503·시간 초과는 **폴링이 아니라 재시도**다. 11장의 재시도 간격(Retry-After 헤더 → body → 20초), 연속 8회 상한, 180초 마감을 그대로 적용한다 |
+| **상세 GET** | POST 201이 즉시 `clear`/`flagged` | POST 응답에 없는 상세 항목(`criminalRecord`, `educationVerified`, `employmentVerified`, `creditScore`)을 받기 | **즉시**(`next_run_at` = 현재 DB 시각) | 상세가 포함된 200 응답 **1회**를 받으면 `DONE`. 상태가 바뀌기를 기다리는 반복 조회는 하지 않는다 | 500·503·시간 초과는 **폴링이 아니라 재시도**다. 9장의 재시도 간격(Retry-After 헤더 → body → 20초), 8장의 연속 8회 상한, 11장의 180초 마감을 그대로 적용한다 |
 | **pending 폴링** | POST 201이 `pending` | 상태가 `clear`/`flagged`로 바뀌기를 기다리기 | POST 후 **35초** | 상세가 포함된 `clear`/`flagged` 응답을 받으면 `DONE`. pending이면 20초 뒤 다시 조회 | 위와 같은 재시도 규칙. **pending 응답은 실패로 세지 않고** 연속 실패 수를 0으로 되돌린다 |
 
 - 두 경우는 추가 컬럼 없이 `result_status`로 구분한다. `IN_PROGRESS`이면서 `clear`/`flagged`이면 상세 GET, `pending`이면 폴링이다.
-- **상세 GET의 "1회"는 "성공 응답 1회"라는 뜻이다(지원자 확정).** 시도를 딱 한 번만 하면, 실측에서 순차 GET의 59.1%가 일시적 실패였으므로(8.1장, n=413) 즉시 완료된 건의 절반 이상이 상세 없이 끝난다. 그래서 실패는 재시도 규칙으로 처리한다.
+- **상세 GET의 "1회"는 "성공 응답 1회"라는 뜻이다(지원자 확정).** 시도를 딱 한 번만 하면, 실측에서 순차 GET의 59.1%가 일시적 실패였으므로(2-4, n=413) 즉시 완료된 건의 절반 이상이 상세 없이 끝난다. 그래서 실패는 재시도 규칙으로 처리한다.
 - 상세 GET에 `pending`이 돌아오는 경우(관측 0건): POST에서 받은 `clear`/`flagged`를 덮어쓰지 않고, 일시적 실패와 같이 다시 시도한다. 상세 GET과 POST의 최종값이 다르면 상세 GET의 값을 결과로 저장한다. 상세 항목이 함께 온 응답이기 때문이다.
 
 **그 밖의 규칙**
-- 타이밍 값은 모두 MEASUREMENTS.md 11장에서 가져온다(8.3절 표).
-- 수동 "다시 조회"(`recheck_requested_at`)는 자동 폴링과 따로 처리한다. 워커가 외부 호출 **1회**만 한다(`UNRESOLVED`면 GET, `SUBMIT_UNKNOWN`이면 요청 후 목록). 이 1회의 GET 타임아웃은 11장 GET 타임아웃(35초)이다.
-- 503 응답의 `retryAfter`는 헤더(`Retry-After`)를 먼저 보고, 없으면 JSON 본문의 `retryAfter` 필드를 Jackson으로 읽는다(11장).
+- 타이밍 값은 모두 MEASUREMENTS.md 7~12장에서 가져온다(8.3절 표).
+- 수동 "다시 조회"(`recheck_requested_at`)는 자동 폴링과 따로 처리한다. 워커가 외부 호출 **1회**만 한다(`UNRESOLVED`면 GET, `SUBMIT_UNKNOWN`이면 요청 후 목록). 이 1회의 GET 타임아웃은 7-1 의 GET 타임아웃(35초)이다.
+- 503 응답의 `retryAfter`는 헤더(`Retry-After`)를 먼저 보고, 없으면 JSON 본문의 `retryAfter` 필드를 Jackson으로 읽는다(9장).
 - 화면은 배지를 두 개 보여 준다. **결과**(대기 중 / 이상 없음 / 추가 검토 필요(flagged))와 **연동 상태**(요청 대기 / 요청 중 / 정상 / "외부 서비스 응답 지연, n초 후 재확인" / 확인 필요 / 결과 미확인)다. 두 정보를 한 배지에 섞지 않는다. flagged를 "확인 필요"라고 부르지 않는 이유는 연동 상태의 "확인 필요"와 헷갈리지 않게 하기 위해서다.
 - **POST 전에 `SUBMITTING`을 먼저 커밋한다.** 이유는 두 가지다. ① 작업자가 POST 도중 죽어도 "보냈을 수 있다"는 사실이 DB에 남아 재POST를 막는다. ② UNIQUE(`active_employee_id`)가 `QUEUED` 단계에서 이미 중복 요청을 막는다.
 - 외부 API 키는 환경변수 `CANDIDATE_KEY`에만 있고 `@ConfigurationProperties`로 주입한다. 브라우저는 외부 API를 직접 호출하지 않는다. 키는 로그에 남기지 않는다.
@@ -831,11 +831,11 @@ INSERT INTO employee (emp_no, name_ko, family_name_ko, given_name_ko, birth_date
 | (3) 결과 보관 | 결과 요약(`result_status`, 시각, 요청자)은 계속 보관한다. **민감 상세는 퇴사 처리 시 NULL로 지우고** `detail_purged_at`을 기록한다. 스케줄러 없이 퇴사 트랜잭션 안에서 처리할 수 있다. 열람은 관리자 상세 화면으로만 한정한다. | `detail_purged_at` 컬럼으로 지원 |
 | 직원 본인 BC 열람 | 허용하지 않는다(과제: 관리자가 확인할 수 있어야 함). | 없음 |
 
-### 8.3 API 측정 결과에 따라 정하는 값 (MEASUREMENTS.md 11장 → 설계 적용 위치)
+### 8.3 API 측정 결과에 따라 정하는 값 (MEASUREMENTS.md 7~12장 → 설계 적용 위치)
 
-값은 **MEASUREMENTS.md 11장에 지원자가 기입한 것을 그대로 옮긴다.** 이 문서는 새 값을 만들지 않는다. 각 값의 근거(섹션·수치·n)는 11장에 있으므로 여기서는 반복하지 않는다. 코드는 이 값들을 `application.yml`의 `bgcheck` 설정 한 곳에서 읽는다(`@ConfigurationProperties` 레코드 `BgCheckPolicy`, 타입은 `Duration`·`int`). 배포 위치에서 다시 측정해 값이 바뀌면 설정 파일만 고치면 된다.
+값은 **MEASUREMENTS.md 7~12장에 지원자가 기입한 것을 그대로 옮긴다.** 이 문서는 새 값을 만들지 않는다. 각 값의 근거(섹션·수치·n)는 7~12장에 있으므로 여기서는 반복하지 않는다. 코드는 이 값들을 `application.yml`의 `bgcheck` 설정 한 곳에서 읽는다(`@ConfigurationProperties` 레코드 `BgCheckPolicy`, 타입은 `Duration`·`int`). 배포 위치에서 다시 측정해 값이 바뀌면 설정 파일만 고치면 된다.
 
-| 항목 | 11장 결정값 (요약) | 이 설계에서 쓰이는 곳 |
+| 항목 | 결정값 (요약) | 이 설계에서 쓰이는 곳 |
 |---|---|---|
 | GET 타임아웃 | 요청 1회당 35초. 마감까지 남은 시간이 더 짧으면 남은 시간까지만 | 워커의 상세 GET과 폴링 GET(`HttpRequest.timeout`). `poll_deadline_at`으로 남은 시간을 계산한다. 선점 시간의 기본 길이이기도 하다(2.5.4). 화면 요청은 이 대기와 관계없다. |
 | POST 타임아웃 | 5초. POST 전에 DB에 먼저 기록. 실패·시간 초과 시 자동 재전송 없음. **요청 직전 목록과 요청 후 목록의 차이가 정확히 1개일 때만** 연결. 요청 전·후 목록 조회 실패, 새 후보 0개·여러 개면 '확인 필요' | 워커의 제출 단계. `SUBMITTING` + `post_sent_at`을 먼저 커밋한다. 비교 규칙은 4.3절. |
@@ -845,14 +845,14 @@ INSERT INTO employee (emp_no, name_ko, family_name_ko, given_name_ko, birth_date
 | 폴링 중단 조건 | POST 시점부터 최대 180초. 상세가 포함된 clear/flagged 응답을 받으면 종료. 넘으면 '결과 미확인', checkId 보존, 나중에 재조회 | `poll_deadline_at` = `post_sent_at` + 180초 → `UNRESOLVED`, "다시 조회" 요청(5.2) |
 | 재시도 중단 조건 | 상세가 포함된 clear/flagged, 180초, 연속 8회. 400·401·404는 자동 반복하지 않음. 500·503을 flagged로 바꾸지 않음 | POST 400·401 → `SUBMIT_FAILED`. GET 401·404 → `UNRESOLVED`. `result_status`는 2xx 본문에서만 갱신한다. |
 
-11장에 없어서 **아직 정하지 않은 값** [미정]:
+MEASUREMENTS.md 에 없어서 **아직 정하지 않은 값** [미정]:
 
 | 항목 | 쓰이는 곳 | 정할 때 참고할 근거 |
 |---|---|---|
-| 워커 tick 주기 | `@Scheduled(fixedDelay)` 간격(2.5.2) | 실제 호출이 최대 tick 주기만큼 늦어진다. 11장의 20초 간격보다 충분히 짧아야 한다. |
+| 워커 tick 주기 | `@Scheduled(fixedDelay)` 간격(2.5.2) | 실제 호출이 최대 tick 주기만큼 늦어진다. 9장의 20초 간격보다 충분히 짧아야 한다. |
 | 선점 시간의 여유 | 선점 UPDATE의 `leaseMicros`(2.5.4) | 외부 호출 타임아웃(GET 35초, POST 5초)에 더한다. 작으면 정상 호출 중에 다른 작업자가 가져가고, 크면 작업자가 죽었을 때 복구가 늦어진다. |
-| 동시 외부 호출 상한 | `ThreadPoolTaskExecutor` 크기(2.5.2) | [제안] 5. 6장: 동시성 5에서 5xx·예외 10/20, 동시성 10에서 15/20(각 n=20, 표본 적음). 11장에 추가할지 검토 |
-| 목록 GET 타임아웃 | 요청 전후 목록 조회(4.3) | [제안] 11장 GET 타임아웃 35초를 그대로 쓴다. 목록 엔드포인트만 따로 정할 근거가 없다(자동 측정 n=9). |
+| 동시 외부 호출 상한 | `ThreadPoolTaskExecutor` 크기(2.5.2) | [제안] 5. 5장: 동시성 5에서 5xx·예외 10/20, 동시성 10에서 15/20(각 n=20, 표본 적음). 결정 장에 추가할지 검토 |
+| 목록 GET 타임아웃 | 요청 전후 목록 조회(4.3) | [제안] 7-1 의 GET 타임아웃 35초를 그대로 쓴다. 목록 엔드포인트만 따로 정할 근거가 없다(자동 측정 n=9). |
 | 배포 위치 재측정 여부 | 위 값 전체의 적용 가능성 | 10장(단일 클라이언트, 지원자 PC) |
 
 ---
@@ -868,7 +868,7 @@ INSERT INTO employee (emp_no, name_ko, family_name_ko, given_name_ko, birth_date
 | 5 | 관리자: 목록, 상세, 생성, 신원 수정, 퇴사 처리 | 55분 | EMP-007 생년월일 입력, 퇴사 처리가 동작한다. |
 | 6 | BC 연동: `BackgroundCheckApi` 인터페이스와 `HttpClient` 구현, 요청 컨트롤러(`QUEUED` INSERT + 409 처리), `BackgroundCheckStore`(선점·token 쓰기 네이티브 SQL), `BackgroundCheckWorker.tick()`, 제출 단계(요청 전후 목록 비교), 상세 GET·폴링, 상태 API, 다시 조회·확인 필요 종료, 이력·상세 화면 | 110분 | 워커를 끄고 `tick()`을 직접 부르는 테스트(가짜 API)로 확인한다: 진행 중 중복 요청 → 409 / 503이 결과 컬럼을 바꾸지 않음 / pending → 35초 뒤 첫 GET / 즉시 clear → 상세 GET 즉시 / 180초 마감 / 연속 8회 / POST 시간 초과 × {새 후보 1·0·2개, 요청 후 목록 실패, 요청 전 목록 실패} / `SUBMITTING` 복구 시 POST 호출 수 1 / 옛 token 쓰기 0행 / **스레드 2개 동시 선점 → 합계 1(50회 반복)** |
 | 7 | 권한 테스트 행렬(MockMvc, URL × {비로그인, 직원, 퇴사 직원, 관리자}) | 20분 | 5.2절 표 전체가 테스트로 통과한다. |
-| 8 | 11장 값 → `application.yml` `bgcheck` 반영(11장은 기입 완료), 배포 서버에서 소량 재측정 여부 판단, DECISIONS.md, AI_LOG.md | 10분 | 제출물 2·3·4 완성 |
+| 8 | 결정값 → `application.yml` `bgcheck` 반영(7~12장은 기입 완료), 배포 서버에서 소량 재측정 여부 판단, DECISIONS.md, AI_LOG.md | 10분 | 제출물 2·3·4 완성 |
 
 - Java는 같은 기능이라도 파일 수가 많다(엔티티, 저장소, 서비스, 컨트롤러, 폼 클래스). 2~6번이 예상보다 길어질 가능성이 가장 큰 위험이다.
 - 시간이 부족하면 줄일 순서:
@@ -956,7 +956,7 @@ bgcheck:
   worker.enabled: ${BGCHECK_WORKER_ENABLED:false}
   base-url: https://54capvm12g.execute-api.ap-northeast-2.amazonaws.com
   candidate-key: ${CANDIDATE_KEY}
-  # 아래 값은 MEASUREMENTS.md 11장 값을 그대로 옮긴다(8.3). [미정] 항목은 구현 때 근거와 함께 채운다.
+  # 아래 값은 MEASUREMENTS.md 7~12장 값을 그대로 옮긴다(8.3). [미정] 항목은 구현 때 근거와 함께 채운다.
   get-timeout: 35s
   post-timeout: 5s
   first-poll-delay: 35s
