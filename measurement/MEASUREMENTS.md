@@ -1,6 +1,6 @@
 # MEASUREMENTS — Background Check API 실측 결과
 
-> 이 문서는 `measure_background_api.py report` 가 `data/*.csv` 만 읽어 자동 생성한다. 생성 시각: 2026-09-27T15:35:00.219Z
+> 이 문서는 `measure_background_api.py report` 가 `data/*.csv` 만 읽어 자동 생성한다. 생성 시각: 2026-09-27T15:53:09.699Z
 > 측정하지 않은 값은 기재하지 않으며, 표본이 없거나 부족하면 `TBD` / `표본 부족` 으로 표시한다.
 
 <!-- SUMMARY:START -->
@@ -118,21 +118,17 @@ p99 는 n=203 에서도 신뢰구간 상한이 관측 범위를 벗어난다(10�
 
 **읽는 법.** 실제 호출에서 자주 만나는 실패는 500 과 503 이다(293 / 549 (53.4%)). 4xx 는 9건뿐이고 대부분 오류 케이스 시험분이므로(7.5) 정상 사용의 실패율로 읽으면 안 된다. 503 은 응답시간과 body 구성이 다른 **두 종류**로 나뉘므로 하나의 실패 유형으로 다루지 않는다(8.0).
 
-### 3.2 테스트 유형 × 엔드포인트별
+### 3.2 엔드포인트별 성공률
 
-| testType | endpoint | n | 200 | 201 | 400 | 401 | 404 | 500 | 503 | EXC:ReadTimeout |
-|---|---|---|---|---|---|---|---|---|---|---|
-| concurrency | GET /background-checks/{checkId} | 80 | 34 / 80 (42.5%) | 0 | 0 | 0 | 0 | 29 / 80 (36.2%) | 17 / 80 (21.2%) | 0 |
-| concurrency-probe | GET /background-checks/{checkId} | 1 | 0 | 0 | 0 | 0 | 0 | 1 / 1 (100.0%) | 0 | 0 |
-| duplicate | POST /background-checks | 5 | 0 | 5 / 5 (100.0%) | 0 | 0 | 0 | 0 | 0 | 0 |
-| duplicate-list | GET /background-checks | 6 | 0 | 0 | 0 | 0 | 0 | 3 / 6 (50.0%) | 1 / 6 (16.7%) | 2 / 6 (33.3%) |
-| errors | GET /background-checks | 2 | 0 | 0 | 1 / 2 (50.0%) | 0 | 0 | 1 / 2 (50.0%) | 0 | 0 |
-| errors | GET /background-checks/{checkId} | 6 | 0 | 0 | 0 | 2 / 6 (33.3%) | 2 / 6 (33.3%) | 1 / 6 (16.7%) | 1 / 6 (16.7%) | 0 |
-| errors | POST /background-checks | 4 | 0 | 0 | 4 / 4 (100.0%) | 0 | 0 | 0 | 0 | 0 |
-| latency | GET /background-checks/{checkId} | 274 | 114 / 274 (41.6%) | 0 | 0 | 0 | 0 | 98 / 274 (35.8%) | 62 / 274 (22.6%) | 0 |
-| lifecycle | GET /background-checks/{checkId} | 139 | 55 / 139 (39.6%) | 0 | 0 | 0 | 0 | 44 / 139 (31.7%) | 35 / 139 (25.2%) | 5 / 139 (3.6%) |
-| lifecycle | POST /background-checks | 31 | 0 | 31 / 31 (100.0%) | 0 | 0 | 0 | 0 | 0 | 0 |
-| list-check | GET /background-checks | 1 | 1 / 1 (100.0%) | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+> 오류 케이스 시험(`errors` 명령)으로 일부러 잘못 보낸 요청은 빼고, 정상 입력으로 보낸 요청만 센다.
+
+| operation | 쓰임 | 요청 n | 성공 | 그 밖의 응답 |
+|---|---|---|---|---|
+| GET /background-checks/{checkId} | 조회 상세 | 494 | 203 / 494 (41.1%) | 500 172, 503 114, EXC:ReadTimeout 5 |
+| GET /background-checks | 이력 목록 | 7 | 1 / 7 (14.3%) | 500 3, 503 1, EXC:ReadTimeout 2 |
+| POST /background-checks | 조회 요청 | 36 | 36 / 36 (100.0%) | 없음 |
+
+**읽는 법.** 조회 상세는 절반 남짓 성공하지만 **이력 목록은 거의 성공하지 못했다.** POST 가 시간 초과됐을 때 '방금 건이 실제로 만들어졌는지'를 이 목록으로 확인해야 하는데, 그 확인 자체가 불안정하다는 뜻이다 → 11.2 에서 '확인되지 않으면 추측하지 않고 확인 필요 상태로 둔다'의 근거.
 
 ## 4. 동일 employeeId 반복 POST 결과
 

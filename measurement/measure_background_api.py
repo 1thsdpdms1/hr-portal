@@ -1428,18 +1428,29 @@ def generate_report(spec: Spec):
       f"4xx 는 {n4xx}건뿐이고 대부분 오류 케이스 시험분이므로(7.5) 정상 사용의 실패율로 읽으면 안 된다. "
       "503 은 응답시간과 body 구성이 다른 **두 종류**로 나뉘므로 하나의 실패 유형으로 다루지 않는다(8.0).")
     w("")
-    w("### 3.2 테스트 유형 × 엔드포인트별")
+    w("### 3.2 엔드포인트별 성공률")
     w("")
-    grp = defaultdict(Counter)
-    for r in auto:
-        grp[(r["testType"], f"{r['method']} {r['endpoint']}")][r["httpStatus"]] += 1
-    if grp:
-        codes = sorted({c for g in grp.values() for c in g}, key=status_code_key)
-        rows = []
-        for (tt, ep), c in sorted(grp.items()):
-            total = sum(c.values())
-            rows.append([tt, ep, total] + [ratio(c[k], total) if c[k] else "0" for k in codes])
-        L.extend(md_table(["testType", "endpoint", "n"] + codes, rows))
+    w("> 오류 케이스 시험(`errors` 명령)으로 일부러 잘못 보낸 요청은 빼고, 정상 입력으로 보낸 요청만 센다.")
+    w("")
+    normal = [r for r in auto if r["testType"] != "errors"]
+    eps = [("GET", EP_CHECK, "조회 상세", ("200",)),
+           ("GET", EP_CHECKS, "이력 목록", ("200",)),
+           ("POST", EP_CHECKS, "조회 요청", ("201",))]
+    erows = []
+    for m, ep, label, ok_codes in eps:
+        rs = [r for r in normal if r["method"] == m and r["endpoint"] == ep]
+        if not rs:
+            continue
+        ok = sum(1 for r in rs if r["httpStatus"] in ok_codes)
+        c = Counter(r["httpStatus"] for r in rs if r["httpStatus"] not in ok_codes)
+        erows.append([f"{m} {ep}", label, len(rs), ratio(ok, len(rs)),
+                      ", ".join(f"{k} {v}" for k, v in sorted(c.items(), key=lambda kv: status_code_key(kv[0]))) or "없음"])
+    if erows:
+        L.extend(md_table(["operation", "쓰임", "요청 n", "성공", "그 밖의 응답"], erows))
+        w("")
+        w("**읽는 법.** 조회 상세는 절반 남짓 성공하지만 **이력 목록은 거의 성공하지 못했다.** "
+          "POST 가 시간 초과됐을 때 '방금 건이 실제로 만들어졌는지'를 이 목록으로 확인해야 하는데, "
+          "그 확인 자체가 불안정하다는 뜻이다 → 11.2 에서 '확인되지 않으면 추측하지 않고 확인 필요 상태로 둔다'의 근거.")
     else:
         w("TBD — 자동 측정 없음")
     w("")
