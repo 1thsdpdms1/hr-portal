@@ -26,3 +26,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# 제출용 첨부(AI 대화 기록 원문 등). 저장소 밖으로 전달하므로 커밋하지 않는다.
+submission/
