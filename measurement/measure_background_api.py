@@ -239,6 +239,11 @@ def fmt_ms(v):
     return "" if v is None else f"{v:.1f}"
 
 
+def ms(v):
+    """서술 문장 안에서 쓰는 ms 표기. 표의 stat_cell 과 같은 자릿수·천단위 구분."""
+    return "TBD" if v is None else f"{v:,.0f}"
+
+
 # ---------------------------------------------------------------------------
 # 통계
 # ---------------------------------------------------------------------------
@@ -1358,6 +1363,16 @@ def generate_report(spec: Spec):
         ci_rows.append([f"p{int(q * 100)}", rank, stat_cell(all200, q), quantile_ci_cell(all200, q)])
     L.extend(md_table(["통계", "nearest-rank 순위", "값 (ms)", "95% 신뢰구간 (ms, 순위)"], ci_rows))
     w("")
+    if all200:
+        p50v = percentile_nearest_rank(all200, 0.50)
+        p95v = percentile_nearest_rank(all200, 0.95)
+        maxv = max(all200)
+        w(f"**읽는 법.** 절반은 약 {p50v / 1000:.2f}초 안에 응답했지만(p50 {ms(p50v)}ms), 상위 지연 구간은 "
+          f"{ms(p95v)}~{ms(maxv)}ms 까지 늘어났다(n={len(all200)}). 응답이 빠른 쪽과 느린 쪽이 갈리므로 "
+          f"**p50 만 보고 타임아웃을 짧게 잡으면 느리지만 정상인 응답을 끊게 된다.** "
+          "p99 는 상위 1~2개 관측값에 좌우되고 위 신뢰구간의 상한이 관측 범위를 벗어나므로, "
+          "보장값이 아니라 '관측된 꼬리 지연'으로만 해석한다.")
+        w("")
     post_rows = [r for r in auto if r["method"] == "POST" and r["endpoint"] == EP_CHECKS]
     # POST 지연은 요구 항목은 아니지만 11장의 POST 타임아웃 근거라서 남긴다.
     w("### 2.2 POST /background-checks 지연 (HTTP 201) — POST 타임아웃 근거")
@@ -1383,6 +1398,12 @@ def generate_report(spec: Spec):
                           [[c, ratio(n, len(auto))] for c, n in sorted(cnt.items(), key=lambda kv: status_code_key(kv[0]))]))
     else:
         w("TBD — 자동 측정 없음")
+    w("")
+    n5xx = sum(v for k, v in cnt.items() if k.isdigit() and int(k) >= 500)
+    n4xx = sum(v for k, v in cnt.items() if k.isdigit() and 400 <= int(k) < 500)
+    w(f"**읽는 법.** 실제 호출에서 자주 만나는 실패는 500 과 503 이다({ratio(n5xx, len(auto))}). "
+      f"4xx 는 {n4xx}건뿐이고 대부분 오류 케이스 시험분이므로(7.5) 정상 사용의 실패율로 읽으면 안 된다. "
+      "503 은 응답시간과 body 구성이 다른 **두 종류**로 나뉘므로 하나의 실패 유형으로 다루지 않는다(8.0).")
     w("")
     w("### 3.2 테스트 유형 × 엔드포인트별")
     w("")
@@ -1465,6 +1486,10 @@ def generate_report(spec: Spec):
         w("")
         w("관측 사실:")
         L.extend(findings or ["- 판단 가능한 관측 없음 (표본 부족)"])
+        w("")
+        w("**읽는 법.** 같은 employeeId 로 POST 를 다시 보내면 **새 Background Check 가 하나 더 생긴다.** "
+          "중복을 거부하거나 기존 건과 합치는 동작은 관측되지 않았다. "
+          "따라서 POST 가 시간 초과됐다고 자동으로 다시 보내면 중복 checkId 가 만들어질 수 있다 → 11장의 'POST 자동 재전송 없음'.")
     w("")
 
     # ---------- 5. 처리시간 ----------
@@ -1517,6 +1542,14 @@ def generate_report(spec: Spec):
         latency_stat_row("[전체 완료] 서버 기준: completedAt − createdAt", col(done, "serverDurationMs")),
     ]))
     w("")
+    sd_via = col(via_pending, "serverDurationMs")
+    if sd_via:
+        w(f"**읽는 법.** POST 응답이 이미 최종 상태인 건이 {ratio(len(immediate_done), len(lc_auto))} 이고, "
+          f"pending 을 거친 {len(via_pending)}건은 서버 기준으로 가장 빨라도 {ms(min(sd_via))}ms, "
+          f"중앙값 {ms(percentile_nearest_rank(sd_via, 0.50))}ms, 가장 늦은 것이 {ms(max(sd_via))}ms "
+          f"였다(n={len(sd_via)}). "
+          "**pending 이 되면 최소 30초대는 기다려야 한다**는 뜻이고, 이것이 첫 폴링 시점의 근거가 된다(11장).")
+        w("")
     w("- 1차 근거는 서버 시각 기반 `completedAt − createdAt` 이다(폴링 간격의 영향을 받지 않음). "
       "클라이언트 관측값은 폴링 간격·503 대기만큼 늦게 잡히며, 실제 완료 시점은 "
       "'마지막 pending 관측'과 '최종 상태 첫 관측' 사이에 있다. resume 으로 확인한 건은 클라이언트 관측값을 기록하지 않는다.")
@@ -1591,6 +1624,20 @@ def generate_report(spec: Spec):
         L.extend(md_table(["method", "동시 요청 수", "요청 n", "성공(200/201)", "HTTP 503", "기타(4xx/5xx/예외)",
                            "성공 p50 (ms)", "성공 p95 (ms)", "성공 p99 (ms)", "성공 max (ms)"], rows))
         w("")
+        get_levels = sorted((lvl, rs) for (m, lvl), rs in by_level.items() if m == "GET")
+        if len(get_levels) >= 2:
+            trend = " → ".join(f"{sum(1 for r in rs if r['httpStatus'] == '503') / len(rs) * 100:.1f}%"
+                               for _, rs in get_levels)
+            levels_txt = "/".join(str(lvl) for lvl, _ in get_levels)
+            last_lvl, last_rs = get_levels[-1]
+            last_ok = sum(1 for r in last_rs if r["httpStatus"] == "200") / len(last_rs) * 100
+            w(f"**읽는 법.** 동시 요청 {levels_txt} 단계에서 503 비율은 {trend} 로, "
+              "**동시성이 올라갈수록 503 이 늘어나는 관계는 나타나지 않았다.** "
+              f"다만 마지막 단계(동시 {last_lvl})에서는 기타 5xx·예외가 늘어 성공률이 {last_ok:.1f}% 로 떨어졌으므로, "
+              "동시성이 전혀 영향을 주지 않는다고 단정하지는 않는다. "
+              f"각 단계 n 이 {min(len(rs) for _, rs in get_levels)}~{max(len(rs) for _, rs in get_levels)}건이고 "
+              f"측정한 최대 단계가 {last_lvl} 이므로, 그 위 구간은 알 수 없다.")
+            w("")
         if decisions:
             w("단계 진행 판단 기록 (`runs.csv` 의 concurrency-decision):")
             w("")
@@ -1880,6 +1927,16 @@ def generate_report(spec: Spec):
                           minmax_cell(lt, min), stat_cell(lt, 0.50), minmax_cell(lt, max)])
         L.extend(md_table(["body 필드", "message", "건수", "Retry-After 제공", "지연 min (ms)", "지연 p50 (ms)",
                            "지연 max (ms)"], srows))
+        fast503 = [r for r in r503 if (to_float(r["latencyMs"]) or 0) < 5000]
+        slow503 = [r for r in r503 if (to_float(r["latencyMs"]) or 0) >= 5000]
+        if fast503 and slow503:
+            lf, ls_ = lat(fast503), lat(slow503)
+            w("")
+            w(f"**읽는 법.** 503 은 두 갈래다. 하나는 **즉시 오는 것**({len(fast503)}건, "
+              f"{ms(min(lf))}~{ms(max(lf))}ms)으로 body 에 재시도 간격이 들어 있고, "
+              f"다른 하나는 **약 30초 뒤에 오는 것**({len(slow503)}건, {ms(min(ls_))}~{ms(max(ls_))}ms)으로 "
+              "메시지만 있다. 뒤쪽 때문에 GET 타임아웃을 30초로 두면 이 응답을 받기 전에 끊어 "
+              "'무응답'으로 잘못 기록하게 된다 → 11장의 35초. 어느 계층이 어느 503 을 만들었는지는 실측만으로 확정하지 않는다.")
     else:
         w("TBD — 503 미관측")
     long_timeout_runs = [r["runId"] for r in runs if params_of(r).get("timeout") and float(params_of(r)["timeout"]) > 30]
@@ -1917,10 +1974,11 @@ def generate_report(spec: Spec):
     w("")
 
     # ---------- 9. 정책 결정 영역 ----------
-    w("## 9. 측정 결과 기반 timeout / retry / polling 결정 영역")
+    w("## 9. 결정에 쓸 근거 수치 (자동 집계)")
     w("")
-    w("> 아래 표는 **근거 수치**만 자동으로 채운다. 결정값은 자동으로 정하지 않으며, 근거 표본이 기준에 미달하면 `TBD` 로 표시한다. "
-      "최종 결정은 11장(수기 블록)에 근거와 함께 기입한다.")
+    w("> 11장의 결정값이 어떤 수치 위에 서 있는지 한 표로 모은 것이다. "
+      "**근거 수치만 자동으로 채우고 값은 정하지 않는다.** 표본이 기준에 못 미치면 `TBD` 로 남긴다. "
+      "결정과 그 이유는 11장에 서술했다.")
     w("")
     get200 = lat([r for r in get_one if r["httpStatus"] == "200"])
     post201 = lat([r for r in post_rows if r["httpStatus"] == "201"])
