@@ -48,13 +48,19 @@ public class FakeBackgroundCheckApi implements BackgroundCheckApi {
 
     public static ApiResult<CheckDetail> detail(String checkId, ResultStatus status) {
         return ApiResult.success(200, new CheckDetail(checkId, status, false, true, true, "good",
-            Instant.parse("2026-09-22T12:00:00Z"), Instant.parse("2026-09-22T12:00:54Z"), true),
+            Instant.parse("2026-09-22T12:00:00Z"), Instant.parse("2026-09-22T12:00:54Z"), true, 54_000L),
             Duration.ofMillis(400));
     }
 
+    /** processingMs가 없는 pending(필드가 사라진 경우). */
     public static ApiResult<CheckDetail> pending(String checkId) {
+        return pending(checkId, null);
+    }
+
+    /** 실측처럼 processingMs가 함께 오는 pending. */
+    public static ApiResult<CheckDetail> pending(String checkId, Long processingMs) {
         return ApiResult.success(200, new CheckDetail(checkId, ResultStatus.PENDING, null, null, null, null,
-            Instant.parse("2026-09-22T12:00:00Z"), null, false), Duration.ofMillis(300));
+            Instant.parse("2026-09-22T12:00:00Z"), null, false, processingMs), Duration.ofMillis(300));
     }
 
     public static <T> ApiResult<T> httpFailure(int status, Duration retryAfter) {

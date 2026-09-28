@@ -291,9 +291,17 @@ public class BackgroundCheckStore {
             .executeUpdate();
     }
 
-    /** 아직 pending. 8장대로 실패로 세지 않고 연속 실패 수를 0으로 되돌린다. */
+    /**
+     * 아직 pending. 8장대로 실패로 세지 않고 연속 실패 수를 0으로 되돌린다.
+     *
+     * <p>다음 조회 시각(10장): 목표 = {@code post_sent_at + targetOffsetMs}가 아직 미래이고 마감 안이면 목표에,
+     * 아니면 지금 + {@code fallbackDelaySeconds}에 둔다. 목표 시각에 조회했는데 또 pending이면 목표가 이미 지났으므로
+     * 자동으로 기본 간격으로 돌아간다. 계산은 DB 시계 하나로 한다(서버 createdAt과 빼지 않는다).
+     *
+     * @param targetOffsetMs processingMs + 여유(ms). 쓸 수 없으면 -1
+     */
     @Transactional
-    public int applyPending(long id, String token, long nextRunDelaySeconds) {
+    public int applyPending(long id, String token, long fallbackDelaySeconds, long targetOffsetMs) {
         return em.createNativeQuery("""
                 UPDATE background_check
                    SET result_status = 'pending',
@@ -301,12 +309,21 @@ public class BackgroundCheckStore {
                        poll_count = poll_count + 1,
                        consecutive_failures = 0,
                        last_error_code = NULL,
-                       next_run_at = TIMESTAMPADD(SECOND, :delay, UTC_TIMESTAMP(6)),
+                       next_run_at = CASE
+                           WHEN :offset >= 0
+                            AND post_sent_at IS NOT NULL
+                            AND poll_deadline_at IS NOT NULL
+                            AND TIMESTAMPADD(MICROSECOND, :offset * 1000, post_sent_at) > UTC_TIMESTAMP(6)
+                            AND TIMESTAMPADD(MICROSECOND, :offset * 1000, post_sent_at) <= poll_deadline_at
+                           THEN TIMESTAMPADD(MICROSECOND, :offset * 1000, post_sent_at)
+                           ELSE TIMESTAMPADD(SECOND, :delay, UTC_TIMESTAMP(6))
+                       END,
                        claim_token = NULL,
                        recheck_requested_at = NULL
                  WHERE id = :id AND claim_token = :token
                 """)
-            .setParameter("delay", nextRunDelaySeconds)
+            .setParameter("offset", targetOffsetMs)
+            .setParameter("delay", fallbackDelaySeconds)
             .setParameter("id", id)
             .setParameter("token", token)
             .executeUpdate();

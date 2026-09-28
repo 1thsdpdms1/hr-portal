@@ -40,7 +40,9 @@ bgcheck:
   get-timeout: 35s                     # 7-1: 정상 응답 max 29,776ms(n=203)와 약 30초형 503 max 30,588ms(n=44)를 모두 받기 위해
   post-timeout: 5s                     # 7-2: 성공 POST max 1,895ms(n=36) + 여유. 실패해도 자동 재전송하지 않는다
   first-poll-delay: 35s                # 10장: pending 경유 서버 처리시간 최소 34,043ms(n=13) 이전에는 물어봐야 pending만 받는다
-  poll-interval: 20s                   # 9·10장: 폴링 간격이자 Retry-After가 없을 때의 재시도 간격
+  poll-interval: 20s                   # 9·10장: processingMs로 시각을 못 잡을 때의 폴링 간격이자 Retry-After가 없을 때의 재시도 간격
+  use-processing-ms: true              # 10장: pending 응답의 processingMs가 최종 처리시간과 24/24 일치 → 다음 조회를 그 시각에 둔다. 필드가 사라지면 false
+  processing-ms-margin: 3s             # 10장: post_sent_at + processingMs + 여유. 성공 POST 왕복 max 1,895ms(n=36)를 덮는다
   max-wait: 180s                       # 11장: POST 시점부터의 자동 확인 마감. 넘으면 '결과 미확인'
   max-consecutive-failures: 8          # 8장: 일시적 실패 연속 8회면 중단(200을 받으면 0으로 되돌린다)
   # 아래 셋은 7~12장에 없는 운영 값이다(DESIGN.md 8.3 [미정]). 결정값보다 짧게/크게 두어 정책을 방해하지 않게만 맞췄다.

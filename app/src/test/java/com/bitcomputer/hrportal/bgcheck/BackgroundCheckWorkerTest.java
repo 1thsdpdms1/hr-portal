@@ -118,7 +118,74 @@ class BackgroundCheckWorkerTest extends MySqlIntegrationTest {
     }
 
     @Test
-    void 폴링이_pending이면_20초_뒤로_다시_예약하고_실패로_세지_않는다() {
+    void processingMs가_있으면_POST_시점_더하기_처리시간_더하기_여유로_다음_조회를_예약한다() {
+        long id = 요청을_넣는다();
+        api.listReturns(FakeBackgroundCheckApi.list())
+            .createReturns(FakeBackgroundCheckApi.created("CHK-P1", ResultStatus.PENDING))
+            .getReturns(FakeBackgroundCheckApi.pending("CHK-P1", 55_313L));   // 실측 p50
+
+        worker.tick();
+        지금_처리할_때로_만든다(id);
+        worker.tick();
+
+        // post_sent_at ≈ 방금 + 55.313초 + 여유 3초 → 지금부터 약 58초 뒤
+        assertThat(예약까지_남은초(id)).isBetween(53L, 58L);
+        assertThat(((Number) row(id).get("consecutive_failures")).intValue()).isZero();
+    }
+
+    @Test
+    void processingMs로_잡은_시각이_이미_지났으면_20초_간격으로_돌아간다() {
+        long id = 요청을_넣는다();
+        api.listReturns(FakeBackgroundCheckApi.list())
+            .createReturns(FakeBackgroundCheckApi.created("CHK-P2", ResultStatus.PENDING))
+            .getReturns(FakeBackgroundCheckApi.pending("CHK-P2", 55_313L));
+        worker.tick();
+        // POST가 100초 전이었던 상황: 목표(post_sent_at + 58초)는 이미 지났는데 아직 pending → 값이 틀렸다
+        jdbc.update("UPDATE background_check SET post_sent_at = TIMESTAMPADD(SECOND, -100, UTC_TIMESTAMP(6)) "
+            + "WHERE id = ?", id);
+        지금_처리할_때로_만든다(id);
+
+        worker.tick();
+
+        assertThat(예약까지_남은초(id)).isBetween(15L, 20L);
+    }
+
+    @Test
+    void processingMs로_잡은_시각이_마감_너머면_20초_간격으로_돌아간다() {
+        long id = 요청을_넣는다();
+        api.listReturns(FakeBackgroundCheckApi.list())
+            .createReturns(FakeBackgroundCheckApi.created("CHK-P3", ResultStatus.PENDING))
+            .getReturns(FakeBackgroundCheckApi.pending("CHK-P3", 500_000L));   // 180초 마감 너머
+
+        worker.tick();
+        지금_처리할_때로_만든다(id);
+        worker.tick();
+
+        assertThat(예약까지_남은초(id)).isBetween(15L, 20L);
+    }
+
+    @Test
+    void processingMs_사용을_끄면_20초_간격만_쓴다() {
+        BgCheckProperties off = new BgCheckProperties(properties.baseUrl(), properties.candidateKey(),
+            properties.getTimeout(), properties.postTimeout(), properties.firstPollDelay(),
+            properties.pollInterval(), false, properties.processingMsMargin(), properties.maxWait(),
+            properties.maxConsecutiveFailures(), properties.tickDelay(), properties.leaseMargin(),
+            properties.batchSize());
+        BackgroundCheckWorker offWorker = new BackgroundCheckWorker(store, api, off, objectMapper);
+        long id = 요청을_넣는다();
+        api.listReturns(FakeBackgroundCheckApi.list())
+            .createReturns(FakeBackgroundCheckApi.created("CHK-P4", ResultStatus.PENDING))
+            .getReturns(FakeBackgroundCheckApi.pending("CHK-P4", 55_313L));
+
+        offWorker.tick();
+        지금_처리할_때로_만든다(id);
+        offWorker.tick();
+
+        assertThat(예약까지_남은초(id)).isBetween(15L, 20L);
+    }
+
+    @Test
+    void processingMs가_없는_pending이면_20초_뒤로_다시_예약하고_실패로_세지_않는다() {
         long id = 요청을_넣는다();
         api.listReturns(FakeBackgroundCheckApi.list())
             .createReturns(FakeBackgroundCheckApi.created("CHK-3", ResultStatus.PENDING))

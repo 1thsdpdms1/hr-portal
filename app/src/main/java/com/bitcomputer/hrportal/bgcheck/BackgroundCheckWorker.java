@@ -219,7 +219,8 @@ public class BackgroundCheckWorker {
                 failOrGiveUp(check, token, ERROR_DETAIL_PENDING, null);
                 return true;
             }
-            store.applyPending(check.id(), token, properties.pollInterval().toSeconds());
+            store.applyPending(check.id(), token, properties.pollInterval().toSeconds(),
+                processingOffsetMs(detail));
             return true;
         }
         if (result.httpStatus() == 401 || result.httpStatus() == 404) {
@@ -229,6 +230,17 @@ public class BackgroundCheckWorker {
         }
         failOrGiveUp(check, token, result.errorCodeOrHttp(), result.retryAfter());
         return true;
+    }
+
+    /**
+     * pending 응답의 processingMs로 잡는 다음 조회 시각의 오프셋(post_sent_at 기준, ms). 쓸 수 없으면 -1.
+     * 명세에 없는 필드라 값이 없거나 꺼져 있으면 20초 간격으로 돌아간다(10장).
+     */
+    private long processingOffsetMs(BackgroundCheckApi.CheckDetail detail) {
+        if (!properties.useProcessingMs() || detail.processingMs() == null) {
+            return -1;
+        }
+        return detail.processingMs() + properties.processingMsMargin().toMillis();
     }
 
     /** 관리자가 "다시 조회"를 누른 결과 미확인 건: GET 1회만 보낸다. */

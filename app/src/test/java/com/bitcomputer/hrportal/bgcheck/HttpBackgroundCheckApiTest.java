@@ -48,6 +48,7 @@ class HttpBackgroundCheckApiTest {
         BgCheckProperties properties = new BgCheckProperties(
             "http://127.0.0.1:" + server.getAddress().getPort(), "test-key",
             Duration.ofSeconds(35), Duration.ofSeconds(5), Duration.ofSeconds(35), Duration.ofSeconds(20),
+            true, Duration.ofSeconds(3),
             Duration.ofSeconds(180), 8, Duration.ofSeconds(5), Duration.ofSeconds(10), 5);
         api = new HttpBackgroundCheckApi(properties, new ObjectMapper());
     }
@@ -104,7 +105,7 @@ class HttpBackgroundCheckApiTest {
 
     @Test
     void GET_200_상세_응답은_결과와_상세_항목을_읽는다() {
-        // 명세에 없는 processingMs·tenant·tenantEmployee가 함께 오지만 저장하지 않는다(DESIGN.md 4.3).
+        // 명세에 없는 tenant·tenantEmployee는 담지 않는다(DESIGN.md 4.3). processingMs는 다음 조회 시각 계산용으로 읽는다(10장).
         reply(200, """
             {"checkId":"CHK-1","employeeId":"EMP-003","status":"clear","criminalRecord":false,
              "educationVerified":true,"employmentVerified":true,"creditScore":"good",
@@ -132,6 +133,23 @@ class HttpBackgroundCheckApiTest {
         assertThat(result.body().status()).isEqualTo(ResultStatus.PENDING);
         assertThat(result.body().hasDetail()).isFalse();
         assertThat(result.body().completedAt()).isNull();
+        // 실측: pending 응답에 이미 최종 처리시간이 들어 있었다(MEASUREMENTS.md 4장, 24/24)
+        assertThat(result.body().processingMs()).isEqualTo(54501L);
+    }
+
+    @Test
+    void processingMs가_없거나_숫자가_아니면_null로_둔다() {
+        reply(200, """
+            {"checkId":"CHK-1","status":"pending","createdAt":"2026-09-22T12:37:44.100Z"}""");
+        assertThat(api.get("CHK-1", Duration.ofSeconds(35)).body().processingMs()).isNull();
+
+        reply(200, """
+            {"checkId":"CHK-1","status":"pending","createdAt":"2026-09-22T12:37:44.100Z","processingMs":"54501"}""");
+        assertThat(api.get("CHK-1", Duration.ofSeconds(35)).body().processingMs()).isNull();
+
+        reply(200, """
+            {"checkId":"CHK-1","status":"pending","createdAt":"2026-09-22T12:37:44.100Z","processingMs":-1}""");
+        assertThat(api.get("CHK-1", Duration.ofSeconds(35)).body().processingMs()).isNull();
     }
 
     @Test

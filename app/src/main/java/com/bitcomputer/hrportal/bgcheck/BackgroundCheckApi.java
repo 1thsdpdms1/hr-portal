@@ -36,12 +36,15 @@ public interface BackgroundCheckApi {
     }
 
     /**
-     * GET 200 응답. 명세에 없는 필드(processingMs·tenant·tenantEmployee)는 의미를 모르므로 담지 않는다(DESIGN.md 4.3).
+     * GET 200 응답. 명세에 없는 필드 중 tenant·tenantEmployee는 의미를 모르므로 담지 않는다(DESIGN.md 4.3).
      *
      * @param hasDetail 상세 항목(criminalRecord 등)이 응답에 실제로 들어 있었는가
+     * @param processingMs 명세에 없는 필드. 실측에서 pending 응답의 값이 최종 (completedAt − createdAt)과
+     *                     24/24 일치했다(MEASUREMENTS.md 4장). 다음 조회 시각 계산에만 쓰고 저장하지 않는다(10장).
+     *                     없거나 0 이상의 정수가 아니면 null
      */
     record CheckDetail(String checkId, ResultStatus status, Boolean criminalRecord, Boolean educationVerified,
                        Boolean employmentVerified, String creditScore, Instant createdAt, Instant completedAt,
-                       boolean hasDetail) {
+                       boolean hasDetail, Long processingMs) {
     }
 }

@@ -16,7 +16,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param getTimeout GET 1회 타임아웃 — 7-1: 35초
  * @param postTimeout POST 1회 타임아웃 — 7-2: 5초
  * @param firstPollDelay pending일 때 첫 GET까지 — 10장: POST 후 35초
- * @param pollInterval 이후 폴링 간격이자 Retry-After가 없을 때의 재시도 간격 — 9·10장: 20초
+ * @param pollInterval 이후 폴링 간격이자 Retry-After가 없을 때의 재시도 간격 — 9·10장: 20초.
+ *                     pending 응답의 processingMs로 다음 조회 시각을 잡지 못할 때의 기본값이기도 하다
+ * @param useProcessingMs pending 응답의 processingMs로 다음 조회 시각을 잡을지 — 10장. 필드가 사라지거나
+ *                        의미가 바뀌면 false로 끄고 20초 간격만 쓴다
+ * @param processingMsMargin 다음 조회 시각 = post_sent_at + processingMs + 이 여유 — 10장: 3초.
+ *                           post_sent_at은 서버가 요청을 받기 전이므로 POST 전송 시간만큼 이르다(성공 POST max 1,895ms)
  * @param maxWait POST 시점부터의 자동 확인 마감 — 11장: 180초
  * @param maxConsecutiveFailures GET 일시적 실패 연속 상한 — 8장: 8회
  * @param tickDelay 워커 실행 간격 [미정→제안]. 9장의 20초 간격보다 충분히 짧아야 실제 호출이 늦어지지 않는다
@@ -31,6 +36,8 @@ public record BgCheckProperties(
     Duration postTimeout,
     Duration firstPollDelay,
     Duration pollInterval,
+    boolean useProcessingMs,
+    Duration processingMsMargin,
     Duration maxWait,
     int maxConsecutiveFailures,
     Duration tickDelay,

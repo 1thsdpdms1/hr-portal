@@ -54,7 +54,7 @@
 | GET 목록(`?employeeId=`)은 자동 측정 9건 중 **200이 1건**(나머지 400·500·503·타임아웃, 6-4). 7-2 는 이를 "7회 중 1회만 200(표본 적음)"으로 정리했다 | 조회 이력은 외부 목록 API가 아니라 **우리 DB 기록**으로 보여 준다. 목록 API는 POST 결과가 불확실할 때 **요청 전후 목록을 비교하는 보조 수단**으로만 쓴다. 실패하면 추측하지 않고 "확인 필요"로 남긴다(4.3). |
 | 4장: 같은 사번으로 POST한 5건이 **모두 나중에 목록에 나타났다**. 다만 요청 전(before) 목록 조회를 하지 못해 **전후 비교 자체는 측정하지 못했다(TBD)** | 요청 전후 비교가 동작하는 근거는 "POST로 만든 기록이 목록에 나타난다"까지다. 비교 방식 자체는 구현 후 처음 확인하게 된다(4.3). |
 | 동시성 5: 5xx·예외 10 / 20(50.0%), 동시성 10: 15 / 20(75.0%), 기준선 순차 GET 244 / 413(59.1%) (5장) | 워커가 한 번에 동시에 보내는 외부 호출 수 상한의 [제안] 근거(2.5). |
-| 명세에 없는 필드 `processingMs`, `tenant`, `tenantEmployee` (203/203, 7.2절) | 의미를 모르는 필드는 저장하지 않는다(민감정보 최소 보관). |
+| 명세에 없는 필드 `processingMs`, `tenant`, `tenantEmployee` (203/203, 7.2절) | 의미를 모르는 `tenant`·`tenantEmployee`는 저장하지 않는다(민감정보 최소 보관). `processingMs`는 pending 응답의 값이 최종 `completedAt − createdAt`과 24/24 일치했으므로(MEASUREMENTS.md 4장) **다음 조회 시각 계산에만 쓰고** 저장하지 않는다. 없거나 틀리면 20초 간격으로 돌아간다(6.4). |
 | 측정 스크립트가 **EMP-001로 실제 POST를 6건** 보냈다(duplicate 5건, 수동 M-1 1건) | 외부 API에 EMP-001 기록이 이미 있다. 앱이 외부 목록을 이력으로 쓰면 측정용 요청이 섞여 나온다. 이것도 DB 기록을 이력으로 쓰는 근거다. |
 | API 서버 `createdAt`이 측정 PC 시계보다 6.5~7.6초 이르다 (n=36, 5장) | 우리 시각(`requested_at`)과 외부 시각(`external_created_at`, `completed_at`)을 다른 컬럼에 두고, 서로 빼서 계산하지 않는다. 서버마다 시계가 다를 수 있으므로 일정 계산은 **DB 시계 하나**(`UTC_TIMESTAMP(6)`)로 한다(2.5). |
 
@@ -469,7 +469,7 @@ Java 구현: 직원 본인용 폼은 `phone`, `email` 두 필드만 가진 별�
 | `consecutive_failures` | INT | N | 0 | CHECK `>= 0` | GET 일시적 실패(500·503·시간 초과)의 **연속** 횟수. 200을 받으면(pending 포함) 0으로 되돌린다. 8장: 연속 8회면 중단한다. |
 | `last_error_code` | VARCHAR(20) | Y | NULL | — | 마지막 실패 종류: `HTTP_500`, `HTTP_503`, `TIMEOUT`, `NETWORK`, `HTTP_400`, `HTTP_401`, `HTTP_404`, `UNKNOWN` 등. **업무 결과가 아니다.** |
 | `last_error_at` | DATETIME(6) | Y | NULL | — | |
-| `next_run_at` | DATETIME(6) | Y | `(UTC_TIMESTAMP(6))` | — | **다음 처리 가능 시각.** 이 시각 전에는 어느 서버도 이 행을 처리하지 않는다. 뜻은 하나지만 두 가지로 쓰인다. ① 일정: pending이면 POST 후 35초, 이후 20초이며, 503의 Retry-After(헤더 → body 순)가 더 길면 그 값을 쓴다(9장). ② 선점: 작업자가 가져가면 "외부 호출 타임아웃 + 여유"만큼 미래로 옮긴다(2.5.4). 더 할 일이 없는 상태(`DONE` 등)에서는 NULL이다. 값은 항상 `UTC_TIMESTAMP(6)` 기준으로 DB가 계산한다. |
+| `next_run_at` | DATETIME(6) | Y | `(UTC_TIMESTAMP(6))` | — | **다음 처리 가능 시각.** 이 시각 전에는 어느 서버도 이 행을 처리하지 않는다. 뜻은 하나지만 두 가지로 쓰인다. ① 일정: pending이면 POST 후 35초, 이후에는 pending 응답의 `processingMs`로 `post_sent_at + processingMs + 3초`(미래이고 마감 안일 때만), 그 밖에는 20초이며, 503의 Retry-After(헤더 → body 순)가 더 길면 그 값을 쓴다(9장). ② 선점: 작업자가 가져가면 "외부 호출 타임아웃 + 여유"만큼 미래로 옮긴다(2.5.4). 더 할 일이 없는 상태(`DONE` 등)에서는 NULL이다. 값은 항상 `UTC_TIMESTAMP(6)` 기준으로 DB가 계산한다. |
 | `claim_token` | VARCHAR(36) | Y | NULL | — | 지금 이 단계를 맡은 작업자 표시(`UUID.randomUUID().toString()`). 결과를 쓸 때 이 값이 같아야 한다(2.5.4). 단계가 끝나면 NULL로 둔다. |
 | `post_sent_at` | DATETIME(6) | Y | NULL | — | POST를 보내기 **직전에 커밋한** 시각. 이 값이 있으면 "POST를 보냈을 수 있다"는 뜻이라 이후 어떤 경로로도 재POST하지 않는다. 180초 마감의 기준이다. |
 | `pre_list_check_ids` | JSON | Y | NULL | — | POST 직전 목록 조회로 받은 checkId 배열. **SQL NULL = 요청 전 목록 조회 실패**(비교 기준 없음), `[]` = 조회 성공, 기록 없음. checkId 외의 필드는 저장하지 않는다. Java에서는 `List<String>` 필드에 `@JdbcTypeCode(SqlTypes.JSON)`으로 매핑한다. 필드가 `null`이면 SQL NULL이 저장되는지 테스트로 확인한다(JSON의 `null` 값과 구분해야 한다). |
@@ -551,7 +551,7 @@ UNIQUE KEY uq_bgcheck_active_employee (active_employee_id)
 - 인덱스 `(sync_state, next_run_at)` → 워커가 "처리할 때가 된 행"을 찾는 조건 그대로다.
 - 인덱스 `(employee_id, requested_at)` → 직원별 조회 이력을 최신순으로 보여 준다(MySQL 8.0은 역순 읽기도 이 인덱스로 처리한다). 이 인덱스는 `employee_id` 외래키용 인덱스 역할도 한다. ← 요구사항: 동일 직원에 대한 여러 번의 조회 이력.
 - UNIQUE(`check_id`) → 같은 외부 결과가 두 행에 저장되지 않는다. NULL은 여러 개 허용된다.
-- **저장하지 않는 것**: 외부 응답의 `firstName`/`lastName`/`dateOfBirth`(보낸 값과 중복), `tenant`/`tenantEmployee`/`processingMs`(명세에 없고 의미를 모른다), 응답 원문 JSON. 애플리케이션 로그에도 이름·생년월일·상세 결과를 남기지 않는다. 외부 API 클라이언트의 로그는 checkId·HTTP 상태·소요 시간만 남긴다.
+- **저장하지 않는 것**: 외부 응답의 `firstName`/`lastName`/`dateOfBirth`(보낸 값과 중복), `tenant`/`tenantEmployee`(명세에 없고 의미를 모른다), `processingMs`(다음 조회 시각 계산에만 쓰고 버린다), 응답 원문 JSON. 애플리케이션 로그에도 이름·생년월일·상세 결과를 남기지 않는다. 외부 API 클라이언트의 로그는 checkId·HTTP 상태·소요 시간만 남긴다.
 
 ### 4.4 `employee_change_log` — 직원 정보 변경 이력
 
@@ -711,7 +711,7 @@ sequenceDiagram
         alt 200 + clear/flagged (상세 포함)
             W->>D: DONE, 상세 결과, completed_at
         else 200 + pending
-            W->>D: 폴링이면 연속 실패 0, next_run_at +20초 (상세 GET이면 기존 결과 유지 후 재시도)
+            W->>D: 폴링이면 연속 실패 0, next_run_at = post_sent_at+processingMs+3초 또는 +20초 (상세 GET이면 기존 결과 유지 후 재시도)
         else 500 / 503 / 시간 초과
             W->>D: last_error_code, 연속 실패 +1, next_run_at (결과 컬럼은 그대로)
         else 401 / 404
@@ -731,7 +731,7 @@ sequenceDiagram
 | 구분 | 언제 | 목적 | 첫 GET | 끝나는 조건 | 실패할 때 |
 |---|---|---|---|---|---|
 | **상세 GET** | POST 201이 즉시 `clear`/`flagged` | POST 응답에 없는 상세 항목(`criminalRecord`, `educationVerified`, `employmentVerified`, `creditScore`)을 받기 | **즉시**(`next_run_at` = 현재 DB 시각) | 상세가 포함된 200 응답 **1회**를 받으면 `DONE`. 상태가 바뀌기를 기다리는 반복 조회는 하지 않는다 | 500·503·시간 초과는 **폴링이 아니라 재시도**다. 9장의 재시도 간격(Retry-After 헤더 → body → 20초), 8장의 연속 8회 상한, 11장의 180초 마감을 그대로 적용한다 |
-| **pending 폴링** | POST 201이 `pending` | 상태가 `clear`/`flagged`로 바뀌기를 기다리기 | POST 후 **35초** | 상세가 포함된 `clear`/`flagged` 응답을 받으면 `DONE`. pending이면 20초 뒤 다시 조회 | 위와 같은 재시도 규칙. **pending 응답은 실패로 세지 않고** 연속 실패 수를 0으로 되돌린다 |
+| **pending 폴링** | POST 201이 `pending` | 상태가 `clear`/`flagged`로 바뀌기를 기다리기 | POST 후 **35초** | 상세가 포함된 `clear`/`flagged` 응답을 받으면 `DONE`. pending이면 응답의 `processingMs`로 잡은 `post_sent_at + processingMs + 3초`에 다시 조회한다. 그 시각이 이미 지났거나 마감 너머거나 필드가 없으면 20초 뒤 | 위와 같은 재시도 규칙. **pending 응답은 실패로 세지 않고** 연속 실패 수를 0으로 되돌린다 |
 
 - 두 경우는 추가 컬럼 없이 `result_status`로 구분한다. `IN_PROGRESS`이면서 `clear`/`flagged`이면 상세 GET, `pending`이면 폴링이다.
 - **상세 GET의 "1회"는 "성공 응답 1회"라는 뜻이다(지원자 확정).** 시도를 딱 한 번만 하면, 실측에서 순차 GET의 59.1%가 일시적 실패였으므로(2-4, n=413) 즉시 완료된 건의 절반 이상이 상세 없이 끝난다. 그래서 실패는 재시도 규칙으로 처리한다.
@@ -841,7 +841,7 @@ INSERT INTO employee (emp_no, name_ko, family_name_ko, given_name_ko, birth_date
 | POST 타임아웃 | 5초. POST 전에 DB에 먼저 기록. 실패·시간 초과 시 자동 재전송 없음. **요청 직전 목록과 요청 후 목록의 차이가 정확히 1개일 때만** 연결. 요청 전·후 목록 조회 실패, 새 후보 0개·여러 개면 '확인 필요' | 워커의 제출 단계. `SUBMITTING` + `post_sent_at`을 먼저 커밋한다. 비교 규칙은 4.3절. |
 | 재시도 횟수 | GET 일시적 실패 **연속** 8회면 중단. 200(pending 포함)이면 0으로. POST 자동 재시도 0회 | `consecutive_failures` → 8이면 `UNRESOLVED`. 상세 GET과 폴링 GET 모두 적용 |
 | 재시도 간격 | 503 Retry-After 헤더 → body `retryAfter` → 없으면(500·시간 초과 포함) 다음 20초 시점 | `next_run_at` 계산(DB 시각 + 지연). 상세 GET과 폴링 GET 모두 적용 |
-| 폴링 주기 | POST 즉시 clear/flagged면 **pending 폴링은 하지 않고**, 상세 항목을 받는 GET을 즉시 보낸다(성공 응답 1회로 종료, 실패는 재시도 규칙). pending이면 POST 후 35초에 첫 GET, 이후 20초. Retry-After가 더 길면 그 값 | `next_run_at`의 초깃값(상세 GET: 즉시 / 폴링: `post_sent_at` + 35초)과 갱신. 6.4의 구분 표 |
+| 폴링 주기 | POST 즉시 clear/flagged면 **pending 폴링은 하지 않고**, 상세 항목을 받는 GET을 즉시 보낸다(성공 응답 1회로 종료, 실패는 재시도 규칙). pending이면 POST 후 35초에 첫 GET, 이후 `post_sent_at + processingMs + 3초`(쓸 수 없으면 20초). Retry-After가 더 길면 그 값 | `next_run_at`의 초깃값(상세 GET: 즉시 / 폴링: `post_sent_at` + 35초)과 갱신. 6.4의 구분 표 |
 | 폴링 중단 조건 | POST 시점부터 최대 180초. 상세가 포함된 clear/flagged 응답을 받으면 종료. 넘으면 '결과 미확인', checkId 보존, 나중에 재조회 | `poll_deadline_at` = `post_sent_at` + 180초 → `UNRESOLVED`, "다시 조회" 요청(5.2) |
 | 재시도 중단 조건 | 상세가 포함된 clear/flagged, 180초, 연속 8회. 400·401·404는 자동 반복하지 않음. 500·503을 flagged로 바꾸지 않음 | POST 400·401 → `SUBMIT_FAILED`. GET 401·404 → `UNRESOLVED`. `result_status`는 2xx 본문에서만 갱신한다. |
 
@@ -961,6 +961,8 @@ bgcheck:
   post-timeout: 5s
   first-poll-delay: 35s
   poll-interval: 20s
+  use-processing-ms: true
+  processing-ms-margin: 3s
   poll-deadline: 180s
   max-consecutive-failures: 8
 ```

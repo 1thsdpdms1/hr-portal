@@ -45,7 +45,7 @@ DB_URL=jdbc:mysql://localhost:3306/hr_portal?connectionTimeZone=UTC&forceConnect
 실측에서 정상 GET도 최대 29.7초였고 순차 GET의 59.1%가 500·503·타임아웃이었기 때문이다(`../measurement/MEASUREMENTS.md` 1·2-4).
 
 타이밍 값은 모두 MEASUREMENTS.md 7~12장의 결정값이며 `application.yml`의 `bgcheck` 한 곳에 있다
-(GET 35초 · POST 5초 · 첫 폴링 35초 · 이후 20초 · 마감 180초 · 일시적 실패 연속 8회).
+(GET 35초 · POST 5초 · 첫 폴링 35초 · 이후 `post_sent_at + processingMs + 3초`, 쓸 수 없으면 20초 · 마감 180초 · 일시적 실패 연속 8회).
 
 - 인증키는 환경변수 `CANDIDATE_KEY`로만 받는다. 없으면 워커가 호출을 건너뛰고 경고만 남긴다.
 - POST는 어떤 경우에도 자동으로 다시 보내지 않는다. 결과가 불확실하면 요청 전후 목록의 차이가 **정확히 1개일 때만** checkId를 연결하고, 아니면 "확인 필요"로 남긴다.

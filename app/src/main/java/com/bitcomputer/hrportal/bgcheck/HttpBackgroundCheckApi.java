@@ -179,7 +179,8 @@ public class HttpBackgroundCheckApi implements BackgroundCheckApi {
             text(node, "creditScore"),
             instant(node, "createdAt"),
             instant(node, "completedAt"),
-            hasDetail);
+            hasDetail,
+            nonNegativeLong(node, "processingMs"));
     }
 
     private List<String> parseCheckIds(String body) throws IOException {
@@ -205,6 +206,15 @@ public class HttpBackgroundCheckApi implements BackgroundCheckApi {
     private static Boolean bool(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asBoolean();
+    }
+
+    /** 명세에 없는 숫자 필드용. 정수가 아니거나 음수면 믿을 수 없는 값으로 보고 null을 돌려준다. */
+    private static Long nonNegativeLong(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || !value.isIntegralNumber() || value.asLong() < 0) {
+            return null;
+        }
+        return value.asLong();
     }
 
     private static Instant instant(JsonNode node, String field) {
