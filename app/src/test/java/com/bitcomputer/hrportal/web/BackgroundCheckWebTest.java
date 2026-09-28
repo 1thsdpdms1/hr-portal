@@ -122,6 +122,23 @@ class BackgroundCheckWebTest extends MySqlIntegrationTest {
     }
 
     @Test
+    void 요청_뒤_직원_상세를_다시_그리면_버튼_대신_진행_중_안내를_보여_준다() throws Exception {
+        mvc.perform(get("/admin/employees/EMP-006").with(user(admin)))
+            .andExpect(content().string(containsString("배경 조회 요청</button>")));
+
+        mvc.perform(post("/admin/employees/EMP-006/background-checks").with(user(admin)).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        // 뒤로 가기로 캐시에서 복원된 화면이 아니라 서버가 새로 그린 화면이면 이렇게 보여야 한다
+        mvc.perform(get("/admin/employees/EMP-006").with(user(admin)))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("진행 중인 조회가 있습니다. 끝난 뒤에 다시 요청할 수 있습니다.")))
+            .andExpect(content().string(not(containsString("배경 조회 요청</button>"))))
+            // 캐시에서 복원되면 다시 그리게 하는 스크립트
+            .andExpect(content().string(containsString("e.persisted")));
+    }
+
+    @Test
     void 없는_사번과_없는_조회는_404다() throws Exception {
         mvc.perform(post("/admin/employees/EMP-999/background-checks").with(user(admin)).with(csrf()))
             .andExpect(status().isNotFound());

@@ -38,5 +38,12 @@
 
     <p class="muted">민감 상세(범죄 기록·신용 등급 등)는 각 조회의 상세 화면에서만 볼 수 있습니다.</p>
 </main>
+<!--
+  뒤로 가기로 돌아오면 브라우저가 서버에 다시 묻지 않고 back/forward cache에서 옛 화면을 복원할 수 있다.
+  그러면 배경 조회를 요청하기 전 화면(요청 버튼이 살아 있는 화면)이 보이므로, 복원된 경우에는 서버에서 다시 그린다.
+-->
+<script>
+    window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+</script>
 </body>
 </html>
